@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { USAGE_STATS_STALE_TIME_MS, useNotificationStore, useUsageStatsStore } from '@/stores';
+import { modelPricesApi } from '@/services/api/modelPrices';
 import { usageApi } from '@/services/api/usage';
 import { downloadBlob } from '@/utils/download';
-import { loadModelPrices, saveModelPrices, type ModelPrice } from '@/utils/usage';
+import { type ModelPrice } from '@/utils/usage';
 
 export interface UsagePayload {
   total_requests?: number;
@@ -20,7 +21,7 @@ export interface UseUsageDataReturn {
   error: string;
   lastRefreshedAt: Date | null;
   modelPrices: Record<string, ModelPrice>;
-  setModelPrices: (prices: Record<string, ModelPrice>) => void;
+  setModelPrices: (prices: Record<string, ModelPrice>) => Promise<void>;
   loadUsage: () => Promise<void>;
   handleExport: () => Promise<void>;
   handleImport: () => void;
@@ -43,6 +44,22 @@ export function useUsageData(): UseUsageDataReturn {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const modelPricesRef = useRef<Record<string, ModelPrice>>({});
+
+  const loadModelPrices = useCallback(async () => {
+    const data = await modelPricesApi.getModelPrices();
+    const nextPrices: Record<string, ModelPrice> = {};
+    for (const item of data?.prices ?? []) {
+      if (!item?.model) continue;
+      nextPrices[item.model] = {
+        prompt: Number(item.prompt_usd_per_1m) || 0,
+        completion: Number(item.completion_usd_per_1m) || 0,
+        cache: Number(item.cached_usd_per_1m) || 0
+      };
+    }
+    modelPricesRef.current = nextPrices;
+    setModelPrices(nextPrices);
+  }, []);
 
   const loadUsage = useCallback(async () => {
     await loadUsageStats({ force: true, staleTimeMs: USAGE_STATS_STALE_TIME_MS });
@@ -50,8 +67,14 @@ export function useUsageData(): UseUsageDataReturn {
 
   useEffect(() => {
     void loadUsageStats({ staleTimeMs: USAGE_STATS_STALE_TIME_MS }).catch(() => {});
-    setModelPrices(loadModelPrices());
-  }, [loadUsageStats]);
+    void loadModelPrices().catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : '';
+      showNotification(
+        `${t('notification.refresh_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    });
+  }, [loadModelPrices, loadUsageStats, showNotification, t]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -129,10 +152,48 @@ export function useUsageData(): UseUsageDataReturn {
     }
   };
 
-  const handleSetModelPrices = useCallback((prices: Record<string, ModelPrice>) => {
-    setModelPrices(prices);
-    saveModelPrices(prices);
-  }, []);
+  const handleSetModelPrices = useCallback(
+    async (prices: Record<string, ModelPrice>) => {
+      try {
+        const previousPrices = modelPricesRef.current;
+        const removedModels = Object.keys(previousPrices).filter((model) => !(model in prices));
+
+        for (const model of removedModels) {
+          await modelPricesApi.deleteModelPrice(model);
+        }
+
+        for (const [model, price] of Object.entries(prices)) {
+          const prev = previousPrices[model];
+          if (
+            prev &&
+            prev.prompt === price.prompt &&
+            prev.completion === price.completion &&
+            prev.cache === price.cache
+          ) {
+            continue;
+          }
+          await modelPricesApi.putModelPrice({
+            model,
+            prompt_usd_per_1m: price.prompt,
+            completion_usd_per_1m: price.completion,
+            cached_usd_per_1m: price.cache
+          });
+        }
+
+        modelPricesRef.current = prices;
+        setModelPrices(prices);
+      } catch (err: unknown) {
+        void loadModelPrices().catch(() => {});
+        const message = err instanceof Error ? err.message : '';
+        showNotification(
+          `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+          'error'
+        );
+        throw err;
+      }
+    },
+    [loadModelPrices, showNotification, t]
+  );
 
   const usage = usageSnapshot as UsagePayload | null;
   const error = storeError || '';

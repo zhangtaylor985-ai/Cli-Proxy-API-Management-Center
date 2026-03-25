@@ -36,6 +36,9 @@ let inFlightConfigRequest: { id: number; promise: Promise<Config> } | null = nul
 const SECTION_KEYS: RawConfigSection[] = [
   'debug',
   'proxy-url',
+  'claude-to-gpt-routing-enabled',
+  'claude-to-gpt-target-family',
+  'disable-claude-opus-1m',
   'request-retry',
   'quota-exceeded',
   'usage-statistics-enabled',
@@ -52,7 +55,7 @@ const SECTION_KEYS: RawConfigSection[] = [
   'claude-api-key',
   'vertex-api-key',
   'openai-compatibility',
-  'oauth-excluded-models'
+  'oauth-excluded-models',
 ];
 
 const extractSectionValue = (config: Config | null, section?: RawConfigSection) => {
@@ -62,6 +65,12 @@ const extractSectionValue = (config: Config | null, section?: RawConfigSection) 
       return config.debug;
     case 'proxy-url':
       return config.proxyUrl;
+    case 'claude-to-gpt-routing-enabled':
+      return config.claudeToGptRoutingEnabled;
+    case 'claude-to-gpt-target-family':
+      return config.claudeToGptTargetFamily;
+    case 'disable-claude-opus-1m':
+      return config.disableClaudeOpus1M;
     case 'request-retry':
       return config.requestRetry;
     case 'quota-exceeded':
@@ -162,17 +171,21 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       set({
         config: data,
         cache: newCache,
-        loading: false
+        loading: false,
       });
 
       return section ? extractSectionValue(data, section) : data;
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : typeof error === 'string' ? error : 'Failed to fetch config';
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'Failed to fetch config';
       if (requestId === configRequestToken) {
         set({
           error: message || 'Failed to fetch config',
-          loading: false
+          loading: false,
         });
       }
       throw error;
@@ -195,6 +208,15 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           break;
         case 'proxy-url':
           nextConfig.proxyUrl = value as Config['proxyUrl'];
+          break;
+        case 'claude-to-gpt-routing-enabled':
+          nextConfig.claudeToGptRoutingEnabled = value as Config['claudeToGptRoutingEnabled'];
+          break;
+        case 'claude-to-gpt-target-family':
+          nextConfig.claudeToGptTargetFamily = value as Config['claudeToGptTargetFamily'];
+          break;
+        case 'disable-claude-opus-1m':
+          nextConfig.disableClaudeOpus1M = value as Config['disableClaudeOpus1M'];
           break;
         case 'request-retry':
           nextConfig.requestRetry = value as Config['requestRetry'];
@@ -288,5 +310,5 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     if (!cached) return false;
 
     return Date.now() - cached.timestamp < CACHE_EXPIRY_MS;
-  }
+  },
 }));

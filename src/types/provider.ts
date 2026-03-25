@@ -36,6 +36,7 @@ export interface GeminiKeyConfig {
 export interface ProviderKeyConfig {
   apiKey: string;
   priority?: number;
+  fastRecovery?: boolean;
   prefix?: string;
   baseUrl?: string;
   websockets?: boolean;

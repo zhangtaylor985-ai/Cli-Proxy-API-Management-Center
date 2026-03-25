@@ -11,7 +11,7 @@ import styles from '@/pages/UsagePage.module.scss';
 export interface PriceSettingsCardProps {
   modelNames: string[];
   modelPrices: Record<string, ModelPrice>;
-  onPricesChange: (prices: Record<string, ModelPrice>) => void;
+  onPricesChange: (prices: Record<string, ModelPrice>) => Promise<void>;
 }
 
 export function PriceSettingsCard({
@@ -32,24 +32,35 @@ export function PriceSettingsCard({
   const [editPrompt, setEditPrompt] = useState('');
   const [editCompletion, setEditCompletion] = useState('');
   const [editCache, setEditCache] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSavePrice = () => {
+  const handleSavePrice = async () => {
     if (!selectedModel) return;
     const prompt = parseFloat(promptPrice) || 0;
     const completion = parseFloat(completionPrice) || 0;
     const cache = cachePrice.trim() === '' ? prompt : parseFloat(cachePrice) || 0;
     const newPrices = { ...modelPrices, [selectedModel]: { prompt, completion, cache } };
-    onPricesChange(newPrices);
-    setSelectedModel('');
-    setPromptPrice('');
-    setCompletionPrice('');
-    setCachePrice('');
+    setSaving(true);
+    try {
+      await onPricesChange(newPrices);
+      setSelectedModel('');
+      setPromptPrice('');
+      setCompletionPrice('');
+      setCachePrice('');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeletePrice = (model: string) => {
+  const handleDeletePrice = async (model: string) => {
     const newPrices = { ...modelPrices };
     delete newPrices[model];
-    onPricesChange(newPrices);
+    setSaving(true);
+    try {
+      await onPricesChange(newPrices);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpenEdit = (model: string) => {
@@ -60,14 +71,19 @@ export function PriceSettingsCard({
     setEditCache(price?.cache?.toString() || '');
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editModel) return;
     const prompt = parseFloat(editPrompt) || 0;
     const completion = parseFloat(editCompletion) || 0;
     const cache = editCache.trim() === '' ? prompt : parseFloat(editCache) || 0;
     const newPrices = { ...modelPrices, [editModel]: { prompt, completion, cache } };
-    onPricesChange(newPrices);
-    setEditModel(null);
+    setSaving(true);
+    try {
+      await onPricesChange(newPrices);
+      setEditModel(null);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleModelSelect = (value: string) => {
@@ -105,6 +121,7 @@ export function PriceSettingsCard({
                 options={options}
                 onChange={handleModelSelect}
                 placeholder={t('usage_stats.model_price_select_placeholder')}
+                disabled={saving}
               />
             </div>
             <div className={styles.formField}>
@@ -115,6 +132,7 @@ export function PriceSettingsCard({
                 onChange={(e) => setPromptPrice(e.target.value)}
                 placeholder="0.00"
                 step="0.0001"
+                disabled={saving}
               />
             </div>
             <div className={styles.formField}>
@@ -125,6 +143,7 @@ export function PriceSettingsCard({
                 onChange={(e) => setCompletionPrice(e.target.value)}
                 placeholder="0.00"
                 step="0.0001"
+                disabled={saving}
               />
             </div>
             <div className={styles.formField}>
@@ -135,9 +154,15 @@ export function PriceSettingsCard({
                 onChange={(e) => setCachePrice(e.target.value)}
                 placeholder="0.00"
                 step="0.0001"
+                disabled={saving}
               />
             </div>
-            <Button variant="primary" onClick={handleSavePrice} disabled={!selectedModel}>
+            <Button
+              variant="primary"
+              onClick={() => void handleSavePrice()}
+              disabled={!selectedModel || saving}
+              loading={saving}
+            >
               {t('common.save')}
             </Button>
           </div>
@@ -165,10 +190,20 @@ export function PriceSettingsCard({
                     </div>
                   </div>
                   <div className={styles.priceActions}>
-                    <Button variant="secondary" size="sm" onClick={() => handleOpenEdit(model)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleOpenEdit(model)}
+                      disabled={saving}
+                    >
                       {t('common.edit')}
                     </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDeletePrice(model)}>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => void handleDeletePrice(model)}
+                      disabled={saving}
+                    >
                       {t('common.delete')}
                     </Button>
                   </div>
@@ -188,10 +223,10 @@ export function PriceSettingsCard({
         onClose={() => setEditModel(null)}
         footer={
           <div className={styles.priceActions}>
-            <Button variant="secondary" onClick={() => setEditModel(null)}>
+            <Button variant="secondary" onClick={() => setEditModel(null)} disabled={saving}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleSaveEdit}>
+            <Button variant="primary" onClick={() => void handleSaveEdit()} loading={saving}>
               {t('common.save')}
             </Button>
           </div>
@@ -207,6 +242,7 @@ export function PriceSettingsCard({
               onChange={(e) => setEditPrompt(e.target.value)}
               placeholder="0.00"
               step="0.0001"
+              disabled={saving}
             />
           </div>
           <div className={styles.formField}>
@@ -217,6 +253,7 @@ export function PriceSettingsCard({
               onChange={(e) => setEditCompletion(e.target.value)}
               placeholder="0.00"
               step="0.0001"
+              disabled={saving}
             />
           </div>
           <div className={styles.formField}>
@@ -227,6 +264,7 @@ export function PriceSettingsCard({
               onChange={(e) => setEditCache(e.target.value)}
               placeholder="0.00"
               step="0.0001"
+              disabled={saving}
             />
           </div>
         </div>

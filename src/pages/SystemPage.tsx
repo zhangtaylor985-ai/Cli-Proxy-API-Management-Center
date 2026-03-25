@@ -4,7 +4,13 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { IconGithub, IconBookOpen, IconExternalLink, IconCode } from '@/components/ui/icons';
+import {
+  IconGithub,
+  IconBookOpen,
+  IconExternalLink,
+  IconCode,
+  IconChevronDown,
+} from '@/components/ui/icons';
 import {
   useAuthStore,
   useConfigStore,
@@ -12,7 +18,7 @@ import {
   useModelsStore,
   useThemeStore,
 } from '@/stores';
-import { configApi, versionApi } from '@/services/api';
+import { configApi } from '@/services/api';
 import { apiKeysApi } from '@/services/api/apiKeys';
 import { classifyModels } from '@/utils/models';
 import { STORAGE_KEY_AUTH } from '@/utils/constants';
@@ -42,31 +48,14 @@ const MODEL_CATEGORY_ICONS: Record<string, string | { light: string; dark: strin
   minimax: iconMinimax,
 };
 
-const parseVersionSegments = (version?: string | null) => {
-  if (!version) return null;
-  const cleaned = version.trim().replace(/^v/i, '');
-  if (!cleaned) return null;
-  const parts = cleaned
-    .split(/[^0-9]+/)
-    .filter(Boolean)
-    .map((segment) => Number.parseInt(segment, 10))
-    .filter(Number.isFinite);
-  return parts.length ? parts : null;
-};
-
-const compareVersions = (latest?: string | null, current?: string | null) => {
-  const latestParts = parseVersionSegments(latest);
-  const currentParts = parseVersionSegments(current);
-  if (!latestParts || !currentParts) return null;
-  const length = Math.max(latestParts.length, currentParts.length);
-  for (let i = 0; i < length; i++) {
-    const l = latestParts[i] || 0;
-    const c = currentParts[i] || 0;
-    if (l > c) return 1;
-    if (l < c) return -1;
-  }
-  return 0;
-};
+const DEFAULT_CLAUDE_GPT_TARGET_FAMILY = '';
+const EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY = 'gpt-5.4';
+const CLAUDE_GPT_TARGET_FAMILY_OPTIONS = [
+  { label: '默认（gpt-5.4）', value: DEFAULT_CLAUDE_GPT_TARGET_FAMILY },
+  { label: 'gpt-5.2', value: 'gpt-5.2' },
+  { label: 'gpt-5.4', value: 'gpt-5.4' },
+  { label: 'gpt-5.3-codex', value: 'gpt-5.3-codex' },
+] as const;
 
 export function SystemPage() {
   const { t, i18n } = useTranslation();
@@ -91,7 +80,9 @@ export function SystemPage() {
   const [requestLogDraft, setRequestLogDraft] = useState(false);
   const [requestLogTouched, setRequestLogTouched] = useState(false);
   const [requestLogSaving, setRequestLogSaving] = useState(false);
-  const [checkingVersion, setCheckingVersion] = useState(false);
+  const [claudeRoutingSaving, setClaudeRoutingSaving] = useState(false);
+  const [claudeRoutingTargetSaving, setClaudeRoutingTargetSaving] = useState(false);
+  const [claudeOpus1MSaving, setClaudeOpus1MSaving] = useState(false);
 
   const apiKeysCache = useRef<string[]>([]);
   const versionTapCount = useRef(0);
@@ -103,8 +94,19 @@ export function SystemPage() {
   );
   const groupedModels = useMemo(() => classifyModels(models, { otherLabel }), [models, otherLabel]);
   const requestLogEnabled = config?.requestLog ?? false;
+  const claudeToGptRoutingEnabled = config?.claudeToGptRoutingEnabled ?? false;
+  const claudeToGptTargetFamily = config?.claudeToGptTargetFamily?.trim() ?? '';
+  const effectiveClaudeToGptTargetFamily =
+    claudeToGptTargetFamily || EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY;
+  const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
   const requestLogDirty = requestLogDraft !== requestLogEnabled;
   const canEditRequestLog = auth.connectionStatus === 'connected' && Boolean(config);
+  const canEditClaudeRouting =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingSaving;
+  const canEditClaudeRoutingTarget =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingTargetSaving;
+  const canEditClaudeOpus1M =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeOpus1MSaving;
 
   const appVersion = __APP_VERSION__ || t('system_info.version_unknown');
   const apiVersion = auth.serverVersion || t('system_info.version_unknown');
@@ -222,6 +224,93 @@ export function SystemPage() {
     });
   };
 
+  const handleClaudeRoutingToggle = async (enabled: boolean) => {
+    if (!config) return;
+
+    const previous = claudeToGptRoutingEnabled;
+    setClaudeRoutingSaving(true);
+    updateConfigValue('claude-to-gpt-routing-enabled', enabled);
+
+    try {
+      await configApi.updateClaudeToGptRoutingEnabled(enabled);
+      clearCache('claude-to-gpt-routing-enabled');
+      showNotification(
+        t('notification.claude_to_gpt_routing_updated', {
+          defaultValue: 'Claude 全局转 GPT 设置已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-to-gpt-routing-enabled', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeRoutingSaving(false);
+    }
+  };
+
+  const handleClaudeRoutingTargetFamilyChange = async (family: string) => {
+    if (!config) return;
+
+    const previous = claudeToGptTargetFamily;
+    setClaudeRoutingTargetSaving(true);
+    updateConfigValue('claude-to-gpt-target-family', family);
+
+    try {
+      await configApi.updateClaudeToGptTargetFamily(family);
+      clearCache('claude-to-gpt-target-family');
+      showNotification(
+        t('notification.claude_to_gpt_target_family_updated', {
+          defaultValue: 'Claude 全局转 GPT 默认目标模型已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-to-gpt-target-family', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeRoutingTargetSaving(false);
+    }
+  };
+
+  const handleClaudeOpus1MToggle = async (enabled: boolean) => {
+    if (!config) return;
+
+    const previous = disableClaudeOpus1M;
+    setClaudeOpus1MSaving(true);
+    updateConfigValue('disable-claude-opus-1m', enabled);
+
+    try {
+      await configApi.updateDisableClaudeOpus1M(enabled);
+      clearCache('disable-claude-opus-1m');
+      showNotification(
+        t('notification.claude_opus_1m_updated', {
+          defaultValue: 'Claude Opus 1M 默认策略已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('disable-claude-opus-1m', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeOpus1MSaving(false);
+    }
+  };
+
   const openRequestLogModal = useCallback(() => {
     setRequestLogTouched(false);
     setRequestLogDraft(requestLogEnabled);
@@ -281,39 +370,6 @@ export function SystemPage() {
     }
   };
 
-  const handleVersionCheck = useCallback(async () => {
-    setCheckingVersion(true);
-    try {
-      const data = await versionApi.checkLatest();
-      const latestRaw = data?.['latest-version'] ?? data?.latest_version ?? data?.latest ?? '';
-      const latest = typeof latestRaw === 'string' ? latestRaw : String(latestRaw ?? '');
-      const comparison = compareVersions(latest, auth.serverVersion);
-
-      if (!latest) {
-        showNotification(t('system_info.version_check_error'), 'error');
-        return;
-      }
-
-      if (comparison === null) {
-        showNotification(t('system_info.version_current_missing'), 'warning');
-        return;
-      }
-
-      if (comparison > 0) {
-        showNotification(t('system_info.version_update_available', { version: latest }), 'warning');
-      } else {
-        showNotification(t('system_info.version_is_latest'), 'success');
-      }
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-      const suffix = message ? `: ${message}` : '';
-      showNotification(`${t('system_info.version_check_error')}${suffix}`, 'error');
-    } finally {
-      setCheckingVersion(false);
-    }
-  }, [auth.serverVersion, showNotification, t]);
-
   useEffect(() => {
     fetchConfig().catch(() => {
       // ignore
@@ -355,28 +411,12 @@ export function SystemPage() {
               className={`${styles.infoTile} ${styles.tapTile}`}
               onClick={handleInfoVersionTap}
             >
-              <div className={styles.tileHeader}>
-                <div className={styles.tileLabel}>{t('footer.version')}</div>
-              </div>
+              <div className={styles.tileLabel}>{t('footer.version')}</div>
               <div className={styles.tileValue}>{appVersion}</div>
             </button>
 
             <div className={styles.infoTile}>
-              <div className={styles.tileHeader}>
-                <div className={styles.tileLabel}>{t('footer.api_version')}</div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={styles.tileAction}
-                  onClick={() => void handleVersionCheck()}
-                  loading={checkingVersion}
-                  title={t('system_info.version_check_button')}
-                  aria-label={t('system_info.version_check_button')}
-                >
-                  {t('system_info.version_check_button')}
-                </Button>
-              </div>
+              <div className={styles.tileLabel}>{t('footer.api_version')}</div>
               <div className={styles.tileValue}>{apiVersion}</div>
             </div>
 
@@ -390,6 +430,12 @@ export function SystemPage() {
               <div className={styles.tileValue}>{t(`common.${auth.connectionStatus}_status`)}</div>
               <div className={styles.tileSub}>{auth.apiBase || '-'}</div>
             </div>
+          </div>
+
+          <div className={styles.aboutActions}>
+            <Button variant="secondary" size="sm" onClick={() => fetchConfig(undefined, true)}>
+              {t('common.refresh')}
+            </Button>
           </div>
         </Card>
 
@@ -514,6 +560,104 @@ export function SystemPage() {
             <Button variant="danger" onClick={handleClearLoginStorage}>
               {t('system_info.clear_login_button')}
             </Button>
+          </div>
+        </Card>
+
+        <Card
+          title={t('system_info.claude_to_gpt_title', {
+            defaultValue: 'Claude 请求全局转 GPT',
+          })}
+        >
+          <p className={styles.sectionDescription}>
+            {t('system_info.claude_to_gpt_desc', {
+              defaultValue:
+                '开启后，所有客户端 API Key 发起的 Claude 模型请求都会默认改走 GPT。Opus 默认转 {{family}}(high)，其他 Claude 默认转 {{family}}(medium)。',
+              family: effectiveClaudeToGptTargetFamily,
+            })}
+          </p>
+          <ToggleSwitch
+            label={t('system_info.claude_to_gpt_toggle', {
+              defaultValue: '启用全局 Claude 转 GPT',
+            })}
+            labelPosition="left"
+            checked={claudeToGptRoutingEnabled}
+            disabled={!canEditClaudeRouting}
+            onChange={(value) => {
+              void handleClaudeRoutingToggle(value);
+            }}
+          />
+          <div className={styles.selectRow}>
+            <div className={styles.selectLabelBlock}>
+              <div className={styles.selectLabel}>
+                {t('system_info.claude_to_gpt_target_family_label', {
+                  defaultValue: '默认目标模型',
+                })}
+              </div>
+              <div className={styles.selectHint}>
+                {t('system_info.claude_to_gpt_target_family_hint', {
+                  defaultValue:
+                    '用于全局 Claude 转 GPT 的默认目标族；单个 API Key 如已配置自己的目标模型，将优先覆盖这里。',
+                })}
+              </div>
+            </div>
+            <div className={styles.selectWrap}>
+              <select
+                className={styles.select}
+                value={claudeToGptTargetFamily}
+                disabled={!canEditClaudeRoutingTarget}
+                onChange={(e) => {
+                  void handleClaudeRoutingTargetFamilyChange(e.target.value);
+                }}
+                aria-label={t('system_info.claude_to_gpt_target_family_label', {
+                  defaultValue: '默认目标模型',
+                })}
+              >
+                {CLAUDE_GPT_TARGET_FAMILY_OPTIONS.map((option) => (
+                  <option key={option.label} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.selectIcon}>
+                <IconChevronDown size={16} />
+              </span>
+            </div>
+          </div>
+          <div className="hint">
+            {t('system_info.claude_to_gpt_hint', {
+              defaultValue:
+                '如需让某个 API Key 继续使用 Claude，请到“API Key 策略”页面为该 Key 打开“启用 Claude 模型”。',
+            })}
+          </div>
+        </Card>
+
+        <Card
+          title={t('system_info.disable_claude_opus_1m_title', {
+            defaultValue: '默认禁用 Claude Opus 1M',
+          })}
+        >
+          <p className={styles.sectionDescription}>
+            {t('system_info.disable_claude_opus_1m_desc', {
+              defaultValue:
+                '开启后，客户端 API Key 的 Claude 请求会默认去掉 Opus 1M 信号（包括自定义 1M 头与 context-1m beta），普通 Opus 4.6 仍可使用。',
+            })}
+          </p>
+          <ToggleSwitch
+            label={t('system_info.disable_claude_opus_1m_toggle', {
+              defaultValue: '启用全局 Opus 1M 禁用策略',
+            })}
+            labelPosition="left"
+            checked={disableClaudeOpus1M}
+            disabled={!canEditClaudeOpus1M}
+            onChange={(value) => {
+              void handleClaudeOpus1MToggle(value);
+            }}
+          />
+          <div className="hint">
+            {t('system_info.disable_claude_opus_1m_hint', {
+              defaultValue:
+                '如需让某个 API Key 继续使用 Opus 1M，请到“API Key 策略”页面为该 Key 打开“允许 Opus 1M（覆盖全局）”。',
+            })}
           </div>
         </Card>
       </div>

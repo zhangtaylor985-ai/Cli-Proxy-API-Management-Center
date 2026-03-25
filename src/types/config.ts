@@ -14,6 +14,11 @@ export interface QuotaExceededConfig {
 export interface Config {
   debug?: boolean;
   proxyUrl?: string;
+  claudeToGptRoutingEnabled?: boolean;
+  claudeToGptTargetFamily?: string;
+  disableClaudeOpus1M?: boolean;
+  anthropicBaseUrl?: string;
+  anthropicOAuthTokenUrl?: string;
   requestRetry?: number;
   quotaExceeded?: QuotaExceededConfig;
   usageStatisticsEnabled?: boolean;
@@ -37,6 +42,11 @@ export interface Config {
 export type RawConfigSection =
   | 'debug'
   | 'proxy-url'
+  | 'claude-to-gpt-routing-enabled'
+  | 'claude-to-gpt-target-family'
+  | 'disable-claude-opus-1m'
+  | 'anthropic-base-url'
+  | 'anthropic-oauth-token-url'
   | 'request-retry'
   | 'quota-exceeded'
   | 'usage-statistics-enabled'

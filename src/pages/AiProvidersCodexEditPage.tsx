@@ -27,6 +27,7 @@ type LocationState = { fromAiProviders?: boolean } | null;
 const buildEmptyForm = (): ProviderFormState => ({
   apiKey: '',
   priority: undefined,
+  fastRecovery: false,
   prefix: '',
   baseUrl: '',
   websockets: false,
@@ -67,6 +68,7 @@ const buildCodexSignature = (form: ProviderFormState) =>
     apiKey: String(form.apiKey ?? '').trim(),
     priority:
       form.priority !== undefined && Number.isFinite(form.priority) ? Math.trunc(form.priority) : null,
+    fastRecovery: Boolean(form.fastRecovery),
     prefix: String(form.prefix ?? '').trim(),
     baseUrl: String(form.baseUrl ?? '').trim(),
     websockets: Boolean(form.websockets),
@@ -356,6 +358,7 @@ export function AiProvidersCodexEditPage() {
       const payload: ProviderKeyConfig = {
         apiKey: form.apiKey.trim(),
         priority: form.priority !== undefined ? Math.trunc(form.priority) : undefined,
+        fastRecovery: Boolean(form.fastRecovery),
         prefix: form.prefix?.trim() || undefined,
         baseUrl,
         websockets: Boolean(form.websockets),
@@ -485,6 +488,16 @@ export function AiProvidersCodexEditPage() {
               onChange={(e) => setForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
               disabled={disableControls || saving}
             />
+            <div className="form-group">
+              <label>{t('ai_providers.codex_fast_recovery_label')}</label>
+              <ToggleSwitch
+                checked={Boolean(form.fastRecovery)}
+                onChange={(value) => setForm((prev) => ({ ...prev, fastRecovery: value }))}
+                disabled={disableControls || saving}
+                ariaLabel={t('ai_providers.codex_fast_recovery_label')}
+              />
+              <div className="hint">{t('ai_providers.codex_fast_recovery_hint')}</div>
+            </div>
             <div className="form-group">
               <label>{t('ai_providers.codex_websockets_label')}</label>
               <ToggleSwitch
