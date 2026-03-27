@@ -81,6 +81,9 @@ export function SystemPage() {
   const [requestLogTouched, setRequestLogTouched] = useState(false);
   const [requestLogSaving, setRequestLogSaving] = useState(false);
   const [claudeRoutingSaving, setClaudeRoutingSaving] = useState(false);
+  const [claudeStyleSaving, setClaudeStyleSaving] = useState(false);
+  const [claudeStylePromptSaving, setClaudeStylePromptSaving] = useState(false);
+  const [claudeStylePromptDraft, setClaudeStylePromptDraft] = useState('');
   const [claudeRoutingTargetSaving, setClaudeRoutingTargetSaving] = useState(false);
   const [claudeOpus1MSaving, setClaudeOpus1MSaving] = useState(false);
 
@@ -95,14 +98,21 @@ export function SystemPage() {
   const groupedModels = useMemo(() => classifyModels(models, { otherLabel }), [models, otherLabel]);
   const requestLogEnabled = config?.requestLog ?? false;
   const claudeToGptRoutingEnabled = config?.claudeToGptRoutingEnabled ?? false;
+  const claudeStyleEnabled = config?.claudeStyleEnabled ?? false;
+  const claudeStylePrompt = config?.claudeStylePrompt ?? '';
   const claudeToGptTargetFamily = config?.claudeToGptTargetFamily?.trim() ?? '';
   const effectiveClaudeToGptTargetFamily =
     claudeToGptTargetFamily || EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY;
   const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
   const requestLogDirty = requestLogDraft !== requestLogEnabled;
+  const claudeStylePromptDirty = claudeStylePromptDraft !== claudeStylePrompt;
   const canEditRequestLog = auth.connectionStatus === 'connected' && Boolean(config);
   const canEditClaudeRouting =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingSaving;
+  const canEditClaudeStyle =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeStyleSaving;
+  const canEditClaudeStylePrompt =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeStylePromptSaving;
   const canEditClaudeRoutingTarget =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingTargetSaving;
   const canEditClaudeOpus1M =
@@ -253,6 +263,66 @@ export function SystemPage() {
     }
   };
 
+  const handleClaudeStyleToggle = async (enabled: boolean) => {
+    if (!config) return;
+
+    const previous = claudeStyleEnabled;
+    setClaudeStyleSaving(true);
+    updateConfigValue('claude-style-enabled', enabled);
+
+    try {
+      await configApi.updateClaudeStyleEnabled(enabled);
+      clearCache('claude-style-enabled');
+      showNotification(
+        t('notification.claude_style_updated', {
+          defaultValue: 'Claude 风格开关已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-style-enabled', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeStyleSaving(false);
+    }
+  };
+
+  const handleClaudeStylePromptSave = async () => {
+    if (!config) return;
+
+    const previous = claudeStylePrompt;
+    const next = claudeStylePromptDraft;
+    setClaudeStylePromptSaving(true);
+    updateConfigValue('claude-style-prompt', next);
+
+    try {
+      await configApi.updateClaudeStylePrompt(next);
+      clearCache('claude-style-prompt');
+      showNotification(
+        t('notification.claude_style_prompt_updated', {
+          defaultValue: 'Claude 风格提示词已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-style-prompt', previous);
+      setClaudeStylePromptDraft(previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeStylePromptSaving(false);
+    }
+  };
+
   const handleClaudeRoutingTargetFamilyChange = async (family: string) => {
     if (!config) return;
 
@@ -381,6 +451,10 @@ export function SystemPage() {
       setRequestLogDraft(requestLogEnabled);
     }
   }, [requestLogModalOpen, requestLogTouched, requestLogEnabled]);
+
+  useEffect(() => {
+    setClaudeStylePromptDraft(claudeStylePrompt);
+  }, [claudeStylePrompt]);
 
   useEffect(() => {
     return () => {
@@ -657,6 +731,88 @@ export function SystemPage() {
             {t('system_info.disable_claude_opus_1m_hint', {
               defaultValue:
                 '如需让某个 API Key 继续使用 Opus 1M，请到“API Key 策略”页面为该 Key 打开“允许 Opus 1M（覆盖全局）”。',
+            })}
+          </div>
+        </Card>
+
+        <Card
+          title={t('system_info.claude_style_title', {
+            defaultValue: 'Claude 风格提示词',
+          })}
+        >
+          <p className={styles.sectionDescription}>
+            {t('system_info.claude_style_desc', {
+              defaultValue:
+                '开启后，Claude 请求在内部改走 GPT 时会额外注入一层 Claude/Opus 风格提示词，用于收敛回答风格、行为方式和多轮任务处理习惯。',
+            })}
+          </p>
+          <ToggleSwitch
+            label={t('system_info.claude_style_toggle', {
+              defaultValue: '启用 Claude 风格提示词',
+            })}
+            labelPosition="left"
+            checked={claudeStyleEnabled}
+            disabled={!canEditClaudeStyle}
+            onChange={(value) => {
+              void handleClaudeStyleToggle(value);
+            }}
+          />
+          <div className={styles.promptEditor}>
+            <div className={styles.promptHeader}>
+              <div>
+                <div className={styles.selectLabel}>
+                  {t('system_info.claude_style_prompt_label', {
+                    defaultValue: '提示词内容',
+                  })}
+                </div>
+                <div className={styles.selectHint}>
+                  {t('system_info.claude_style_prompt_hint', {
+                    defaultValue:
+                      '这里保存的是可迭代的 Claude 风格提示词；留空时会回退到内置默认模板。身份伪装规则仍会自动保留，不需要重复写模型身份。',
+                  })}
+                </div>
+              </div>
+              <div className={styles.promptActions}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!canEditClaudeStylePrompt || claudeStylePromptDraft.length === 0}
+                  onClick={() => setClaudeStylePromptDraft('')}
+                >
+                  {t('system_info.claude_style_prompt_reset', {
+                    defaultValue: '恢复默认',
+                  })}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    void handleClaudeStylePromptSave();
+                  }}
+                  loading={claudeStylePromptSaving}
+                  disabled={!canEditClaudeStylePrompt || !claudeStylePromptDirty}
+                >
+                  {t('common.save')}
+                </Button>
+              </div>
+            </div>
+            <textarea
+              className={`input ${styles.promptTextarea}`}
+              rows={12}
+              value={claudeStylePromptDraft}
+              disabled={!canEditClaudeStylePrompt}
+              onChange={(e) => setClaudeStylePromptDraft(e.target.value)}
+              placeholder={t('system_info.claude_style_prompt_placeholder', {
+                defaultValue: '留空则使用内置默认 Claude 风格模板。',
+              })}
+              aria-label={t('system_info.claude_style_prompt_label', {
+                defaultValue: '提示词内容',
+              })}
+            />
+          </div>
+          <div className="hint">
+            {t('system_info.claude_style_hint', {
+              defaultValue:
+                '这个开关只影响风格层，不会解决 Signature 等协议级指纹；它的目标是尽可能把输出风格、任务切换和执行习惯贴近 Claude Opus。',
             })}
           </div>
         </Card>

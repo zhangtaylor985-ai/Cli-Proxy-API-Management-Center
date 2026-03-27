@@ -37,6 +37,8 @@ const SECTION_KEYS: RawConfigSection[] = [
   'debug',
   'proxy-url',
   'claude-to-gpt-routing-enabled',
+  'claude-style-enabled',
+  'claude-style-prompt',
   'claude-to-gpt-target-family',
   'disable-claude-opus-1m',
   'request-retry',
@@ -67,6 +69,10 @@ const extractSectionValue = (config: Config | null, section?: RawConfigSection) 
       return config.proxyUrl;
     case 'claude-to-gpt-routing-enabled':
       return config.claudeToGptRoutingEnabled;
+    case 'claude-style-enabled':
+      return config.claudeStyleEnabled;
+    case 'claude-style-prompt':
+      return config.claudeStylePrompt;
     case 'claude-to-gpt-target-family':
       return config.claudeToGptTargetFamily;
     case 'disable-claude-opus-1m':
@@ -211,6 +217,12 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           break;
         case 'claude-to-gpt-routing-enabled':
           nextConfig.claudeToGptRoutingEnabled = value as Config['claudeToGptRoutingEnabled'];
+          break;
+        case 'claude-style-enabled':
+          nextConfig.claudeStyleEnabled = value as Config['claudeStyleEnabled'];
+          break;
+        case 'claude-style-prompt':
+          nextConfig.claudeStylePrompt = value as Config['claudeStylePrompt'];
           break;
         case 'claude-to-gpt-target-family':
           nextConfig.claudeToGptTargetFamily = value as Config['claudeToGptTargetFamily'];

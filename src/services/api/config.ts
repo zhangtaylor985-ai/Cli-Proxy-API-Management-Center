@@ -42,6 +42,18 @@ export const configApi = {
     apiClient.put('/claude-to-gpt-routing-enabled', { value: enabled }),
 
   /**
+   * Claude 风格提示词开关
+   */
+  updateClaudeStyleEnabled: (enabled: boolean) =>
+    apiClient.put('/claude-style-enabled', { value: enabled }),
+
+  /**
+   * Claude 风格提示词内容
+   */
+  updateClaudeStylePrompt: (prompt: string) =>
+    apiClient.put('/claude-style-prompt', { value: prompt }),
+
+  /**
    * Claude 模型全局转 GPT 默认目标模型
    */
   updateClaudeToGptTargetFamily: (family: string) =>

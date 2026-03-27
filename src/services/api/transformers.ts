@@ -333,6 +333,14 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
   config.claudeToGptRoutingEnabled = normalizeBoolean(
     raw['claude-to-gpt-routing-enabled'] ?? raw.claudeToGptRoutingEnabled
   );
+  config.claudeStyleEnabled = normalizeBoolean(raw['claude-style-enabled'] ?? raw.claudeStyleEnabled);
+  const claudeStylePrompt = raw['claude-style-prompt'] ?? raw.claudeStylePrompt;
+  config.claudeStylePrompt =
+    typeof claudeStylePrompt === 'string'
+      ? claudeStylePrompt
+      : claudeStylePrompt === undefined || claudeStylePrompt === null
+        ? undefined
+        : String(claudeStylePrompt);
   const claudeToGptTargetFamily = raw['claude-to-gpt-target-family'] ?? raw.claudeToGptTargetFamily;
   config.claudeToGptTargetFamily =
     typeof claudeToGptTargetFamily === 'string'

@@ -217,6 +217,39 @@
   transform: translateY(-50%);
 }
 
+.promptEditor {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+}
+
+.promptHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+
+  @media (max-width: 720px) {
+    flex-direction: column;
+  }
+}
+
+.promptActions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.promptTextarea {
+  min-height: 240px;
+  resize: vertical;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  line-height: 1.55;
+}
+
 .clearLoginActions {
   display: flex;
   justify-content: flex-end;
