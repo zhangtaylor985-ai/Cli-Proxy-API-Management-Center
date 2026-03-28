@@ -23,6 +23,7 @@ export interface ApiKeyPolicy {
   apiKey: string;
   fastMode: boolean;
   enableClaudeModels: boolean;
+  claudeUsageLimitUsd: number;
   claudeGptTargetFamily: string;
   upstreamBaseUrl: string;
   excludedModels: string[];
@@ -44,6 +45,7 @@ export type ApiKeyPolicyDTO = {
   'api-key': string;
   'fast-mode'?: unknown;
   'enable-claude-models'?: unknown;
+  'claude-usage-limit-usd'?: unknown;
   'claude-gpt-target-family'?: unknown;
   'upstream-base-url'?: unknown;
   'excluded-models'?: unknown;
@@ -117,6 +119,13 @@ function normalizePolicy(raw: unknown): ApiKeyPolicy | null {
       : enableClaudeModelsRaw == null
         ? false
         : Boolean(enableClaudeModelsRaw);
+  const claudeUsageLimitRaw = dto['claude-usage-limit-usd'];
+  const claudeUsageLimitUsd =
+    typeof claudeUsageLimitRaw === 'number'
+      ? claudeUsageLimitRaw > 0
+        ? claudeUsageLimitRaw
+        : 0
+      : Math.max(0, Number(String(claudeUsageLimitRaw ?? '')) || 0);
   const claudeGptTargetFamily = String(dto['claude-gpt-target-family'] ?? '').trim();
 
   const upstreamRaw = dto['upstream-base-url'];
@@ -248,6 +257,7 @@ function normalizePolicy(raw: unknown): ApiKeyPolicy | null {
     apiKey,
     fastMode,
     enableClaudeModels,
+    claudeUsageLimitUsd,
     claudeGptTargetFamily,
     upstreamBaseUrl,
     excludedModels,
@@ -274,6 +284,7 @@ function toDTO(policy: ApiKeyPolicy): ApiKeyPolicyDTO {
     'api-key': policy.apiKey,
     'fast-mode': Boolean(policy.fastMode),
     'enable-claude-models': Boolean(policy.enableClaudeModels),
+    'claude-usage-limit-usd': policy.claudeUsageLimitUsd,
     'claude-gpt-target-family': String(policy.claudeGptTargetFamily ?? '').trim(),
     'upstream-base-url': String(policy.upstreamBaseUrl ?? '').trim(),
     'excluded-models': policy.excludedModels,

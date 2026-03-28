@@ -291,6 +291,7 @@ export function APIKeyPoliciesPage() {
     return 'basic';
   });
   const [enableClaudeModels, setEnableClaudeModels] = useState(false);
+  const [claudeUsageLimitUsd, setClaudeUsageLimitUsd] = useState('');
   const [claudeGptTargetFamily, setClaudeGptTargetFamily] = useState(
     DEFAULT_CLAUDE_GPT_TARGET_FAMILY
   );
@@ -407,6 +408,7 @@ export function APIKeyPoliciesPage() {
         apiKey: key,
         fastMode: false,
         enableClaudeModels: false,
+        claudeUsageLimitUsd: 0,
         claudeGptTargetFamily: DEFAULT_CLAUDE_GPT_TARGET_FAMILY,
         enableClaudeOpus1M: false,
         upstreamBaseUrl: '',
@@ -426,6 +428,7 @@ export function APIKeyPoliciesPage() {
 
     setFastMode(Boolean(p.fastMode));
     setEnableClaudeModels(Boolean(p.enableClaudeModels));
+    setClaudeUsageLimitUsd(formatBudgetValue(Number(p.claudeUsageLimitUsd ?? 0)));
     setClaudeGptTargetFamily(String(p.claudeGptTargetFamily ?? '').trim());
     setEnableClaudeOpus1M(Boolean(p.enableClaudeOpus1M));
     setAllowOpus46(p.allowClaudeOpus46 ?? true);
@@ -656,6 +659,9 @@ export function APIKeyPoliciesPage() {
 
     const dailyLimit = parsePositiveInt(opus46DailyLimit);
     const parsedDailyBudgetUsd = dailyBudgetEnabled ? parsePositiveNumber(dailyBudgetUsd) : null;
+    const parsedClaudeUsageLimitUsd = enableClaudeModels
+      ? parsePositiveNumber(claudeUsageLimitUsd)
+      : null;
     const parsedWeeklyBudgetUsd = weeklyBudgetEnabled ? parsePositiveNumber(weeklyBudgetUsd) : null;
     const parsedWeeklyBudgetAnchorAt = weeklyBudgetEnabled
       ? toHourlyRFC3339(weeklyBudgetAnchorAt)
@@ -670,6 +676,15 @@ export function APIKeyPoliciesPage() {
     if (dailyBudgetEnabled && parsedDailyBudgetUsd == null) {
       showNotification(
         t('api_key_policies.daily_budget_invalid', { defaultValue: '请填写有效的每日额度（USD）' }),
+        'error'
+      );
+      return;
+    }
+    if (enableClaudeModels && claudeUsageLimitUsd.trim() !== '' && parsedClaudeUsageLimitUsd == null) {
+      showNotification(
+        t('api_key_policies.claude_usage_limit_invalid', {
+          defaultValue: '请填写有效的 Claude 用量上限（USD）',
+        }),
         'error'
       );
       return;
@@ -728,6 +743,7 @@ export function APIKeyPoliciesPage() {
         value: {
           'fast-mode': fastMode,
           'enable-claude-models': enableClaudeModels,
+          'claude-usage-limit-usd': parsedClaudeUsageLimitUsd ?? 0,
           'claude-gpt-target-family': claudeGptTargetFamily,
           'enable-claude-opus-1m': enableClaudeOpus1M,
           'upstream-base-url': upstreamValue,
@@ -766,6 +782,7 @@ export function APIKeyPoliciesPage() {
     claudeFailoverRules,
     claudeFailoverTargetModel,
     claudeGptTargetFamily,
+    claudeUsageLimitUsd,
     enableClaudeModels,
     fastMode,
     enableClaudeOpus1M,
@@ -996,6 +1013,20 @@ export function APIKeyPoliciesPage() {
                   })}
                 />
               </div>
+
+              <Input
+                label={t('api_key_policies.claude_usage_limit', {
+                  defaultValue: 'Claude 用量上限（USD）',
+                })}
+                hint={t('api_key_policies.claude_usage_limit_hint', {
+                  defaultValue:
+                    '仅在“启用 Claude 模型”打开时生效。留空表示不限；达到累计 Claude 成本上限后，如果系统页已开启“Claude 请求全局转 GPT”，会自动回退到系统默认策略。',
+                })}
+                value={claudeUsageLimitUsd}
+                onChange={(e) => setClaudeUsageLimitUsd(e.target.value)}
+                placeholder={t('api_key_policies.unlimited', { defaultValue: '留空=不限' })}
+                disabled={disableControls || !selectedKey || !enableClaudeModels}
+              />
 
               <div className={styles.fieldRow}>
                 <div className={styles.fieldText}>
