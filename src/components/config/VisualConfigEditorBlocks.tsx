@@ -55,6 +55,26 @@ function buildProtocolOptions(
   return options;
 }
 
+const CLIENT_API_KEY_PREFIX = 'sk-';
+const CLIENT_API_KEY_BODY_LENGTH = 48;
+const CLIENT_API_KEY_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+function generateSecureApiKey(): string {
+  let body = '';
+  const random = new Uint8Array(CLIENT_API_KEY_BODY_LENGTH * 2);
+
+  while (body.length < CLIENT_API_KEY_BODY_LENGTH) {
+    crypto.getRandomValues(random);
+    for (const value of random) {
+      if (value >= CLIENT_API_KEY_CHARSET.length * 4) continue;
+      body += CLIENT_API_KEY_CHARSET[value % CLIENT_API_KEY_CHARSET.length];
+      if (body.length === CLIENT_API_KEY_BODY_LENGTH) break;
+    }
+  }
+
+  return CLIENT_API_KEY_PREFIX + body;
+}
+
 export const ApiKeysCardEditor = memo(function ApiKeysCardEditor({
   value,
   disabled,
@@ -91,13 +111,6 @@ export const ApiKeysCardEditor = memo(function ApiKeysCardEditor({
   const [editingApiKeyId, setEditingApiKeyId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [formError, setFormError] = useState('');
-
-  function generateSecureApiKey(): string {
-    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const array = new Uint8Array(17);
-    crypto.getRandomValues(array);
-    return 'sk-' + Array.from(array, (b) => charset[b % charset.length]).join('');
-  }
 
   const openAddModal = () => {
     setEditingApiKeyId(null);
