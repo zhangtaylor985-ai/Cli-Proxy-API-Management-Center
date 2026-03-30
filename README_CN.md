@@ -47,6 +47,22 @@ npm run build
 
 提示：直接用 `file://` 打开 `dist/index.html` 可能遇到浏览器 CORS 限制；更稳妥的方式是用预览/静态服务器打开。
 
+### 方式 D：使用 Caddy 提供生产访问
+
+如果你要把本项目作为独立前端站点部署，推荐：
+
+```bash
+npm install
+npm run build
+```
+
+然后使用 Caddy 对 `dist/` 提供静态访问，不要用 `npm run dev` 对外提供生产流量。
+
+可直接参考：
+
+- [docs/CADDY_DEPLOY_CN.md](docs/CADDY_DEPLOY_CN.md)
+- [deploy/Caddyfile.example](deploy/Caddyfile.example)
+
 ## 连接说明
 
 ### API 地址怎么填
