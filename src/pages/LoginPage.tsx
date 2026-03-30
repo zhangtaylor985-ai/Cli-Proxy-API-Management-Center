@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -294,6 +294,20 @@ export function LoginPage() {
               <Button fullWidth onClick={handleSubmit} loading={loading}>
                 {loading ? t('login.submitting') : t('login.submit_button')}
               </Button>
+
+              <div style={{ marginTop: 14, textAlign: 'center' }}>
+                <Link
+                  to="/api-key-query"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                  }}
+                >
+                  进入 API Key 自助查询页
+                </Link>
+              </div>
 
               {error && <div className={styles.errorBox}>{error}</div>}
             </div>

@@ -16,7 +16,7 @@ import { OAuthPage } from '@/pages/OAuthPage';
 import { QuotaPage } from '@/pages/QuotaPage';
 import { UsagePage } from '@/pages/UsagePage';
 import { ConfigPage } from '@/pages/ConfigPage';
-import { APIKeyPoliciesPage } from '@/pages/APIKeyPoliciesPage';
+import { APIKeysWorkbenchPage } from '@/pages/APIKeysWorkbenchPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { SystemPage } from '@/pages/SystemPage';
 
@@ -24,7 +24,7 @@ const mainRoutes = [
   { path: '/', element: <DashboardPage /> },
   { path: '/dashboard', element: <DashboardPage /> },
   { path: '/settings', element: <Navigate to="/config" replace /> },
-  { path: '/api-keys', element: <Navigate to="/config" replace /> },
+  { path: '/api-keys', element: <APIKeysWorkbenchPage /> },
   { path: '/ai-providers/gemini/new', element: <AiProvidersGeminiEditPage /> },
   { path: '/ai-providers/gemini/:index', element: <AiProvidersGeminiEditPage /> },
   { path: '/ai-providers/codex/new', element: <AiProvidersCodexEditPage /> },
@@ -59,7 +59,7 @@ const mainRoutes = [
   { path: '/quota', element: <QuotaPage /> },
   { path: '/usage', element: <UsagePage /> },
   { path: '/config', element: <ConfigPage /> },
-  { path: '/api-key-policies', element: <APIKeyPoliciesPage /> },
+  { path: '/api-key-policies', element: <Navigate to="/api-keys" replace /> },
   { path: '/logs', element: <LogsPage /> },
   { path: '/system', element: <SystemPage /> },
   { path: '*', element: <Navigate to="/" replace /> },

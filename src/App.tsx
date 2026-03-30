@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, RouterProvider, createHashRouter } from 'react-router-dom';
 import { LoginPage } from '@/pages/LoginPage';
+import { APIKeyQueryPage } from '@/pages/APIKeyQueryPage';
 import { NotificationContainer } from '@/components/common/NotificationContainer';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -22,6 +23,7 @@ const router = createHashRouter([
     element: <RootShell />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/api-key-query', element: <APIKeyQueryPage /> },
       {
         path: '/*',
         element: (

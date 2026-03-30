@@ -353,7 +353,7 @@ export function MainLayout() {
   const navItems = [
     { path: '/', label: t('nav.dashboard'), icon: sidebarIcons.dashboard },
     { path: '/config', label: t('nav.config_management'), icon: sidebarIcons.config },
-    { path: '/api-key-policies', label: t('nav.api_key_policies'), icon: sidebarIcons.key },
+    { path: '/api-keys', label: t('nav.api_keys'), icon: sidebarIcons.key },
     { path: '/ai-providers', label: t('nav.ai_providers'), icon: sidebarIcons.aiProviders },
     { path: '/auth-files', label: t('nav.auth_files'), icon: sidebarIcons.authFiles },
     { path: '/oauth', label: t('nav.oauth', { defaultValue: 'OAuth' }), icon: sidebarIcons.oauth },
