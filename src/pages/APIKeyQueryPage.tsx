@@ -194,7 +194,12 @@ export function APIKeyQueryPage() {
                 <Card
                   key={item.summary.api_key}
                   className={styles.resultCard}
-                  title={`访问密钥 ${item.summary.masked_api_key}`}
+                  title={
+                    <div className={styles.resultTitle}>
+                      <span className={styles.resultTitleLabel}>访问密钥</span>
+                      <strong>{item.summary.masked_api_key}</strong>
+                    </div>
+                  }
                   extra={
                     <div className={styles.resultMeta}>
                       <span className={styles.periodWindow}>
@@ -210,66 +215,96 @@ export function APIKeyQueryPage() {
                     </div>
                   }
                 >
-                  <div className={styles.inlineMetrics}>
-                    <div>
-                      <span>今日费用</span>
-                      <strong>{formatCost(item.summary.today.cost_usd)}</strong>
-                    </div>
-                    <div>
-                      <span>当前周期</span>
-                      <strong>{formatCost(item.summary.current_period.cost_usd)}</strong>
-                    </div>
-                    <div>
-                      <span>今日 Tokens</span>
-                      <strong>{formatNumber(item.summary.today.total_tokens)}</strong>
-                    </div>
-                    <div>
-                      <span>Token 包余额</span>
-                      <strong>{formatCost(item.summary.token_package.remaining_usd)}</strong>
-                    </div>
-                  </div>
-
-                  <div className={styles.windowGrid}>
-                    <div className={styles.windowCard}>
-                      <span>每日预算</span>
-                      <strong>{Math.round(item.summary.daily_budget.used_percent || 0)}%</strong>
-                      <small>
-                        {formatCost(item.summary.daily_budget.used_usd)} /{' '}
-                        {formatCost(item.summary.daily_budget.limit_usd)}
-                      </small>
-                    </div>
-                    <div className={styles.windowCard}>
-                      <span>周期预算</span>
-                      <strong>{Math.round(item.summary.weekly_budget.used_percent || 0)}%</strong>
-                      <small>
-                        {formatCost(item.summary.weekly_budget.used_usd)} /{' '}
-                        {formatCost(item.summary.weekly_budget.limit_usd)}
-                      </small>
-                    </div>
-                    <div className={styles.windowCard}>
-                      <span>周期请求数</span>
-                      <strong>{formatNumber(item.current_period_report.requests)}</strong>
-                      <small>
-                        失败请求 {formatNumber(item.current_period_report.failed_requests)}
-                      </small>
-                    </div>
-                  </div>
-
-                  <div className={styles.trendBars}>
-                    {item.recent_days.map((day) => (
-                      <div key={day.day} className={styles.trendBar}>
-                        <span>{formatCost(day.cost_usd)}</span>
-                        <div className={styles.trendTrack}>
-                          <div
-                            className={styles.trendFill}
-                            style={{
-                              height: `${Math.max(8, (Number(day.cost_usd || 0) / maxCost) * 120)}px`,
-                            }}
-                          />
+                  <div className={styles.resultStack}>
+                    <section className={styles.resultSection}>
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span className={styles.sectionKicker}>账单摘要</span>
+                          <h3>今日与当前周期概览</h3>
                         </div>
-                        <small>{day.day.slice(5)}</small>
+                        <p>把费用、Token 与预付余额放在同一排，便于先判断这把 key 当前是否异常。</p>
                       </div>
-                    ))}
+                      <div className={styles.inlineMetrics}>
+                        <div>
+                          <span>今日费用</span>
+                          <strong>{formatCost(item.summary.today.cost_usd)}</strong>
+                        </div>
+                        <div>
+                          <span>当前周期</span>
+                          <strong>{formatCost(item.summary.current_period.cost_usd)}</strong>
+                        </div>
+                        <div>
+                          <span>今日 Tokens</span>
+                          <strong>{formatNumber(item.summary.today.total_tokens)}</strong>
+                        </div>
+                        <div>
+                          <span>Token 包余额</span>
+                          <strong>{formatCost(item.summary.token_package.remaining_usd)}</strong>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className={styles.resultSection}>
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span className={styles.sectionKicker}>预算窗口</span>
+                          <h3>预算占用与请求情况</h3>
+                        </div>
+                        <p>区分日预算、周期预算和请求数，定位是额度触发还是请求量异常。</p>
+                      </div>
+                      <div className={styles.windowGrid}>
+                        <div className={styles.windowCard}>
+                          <span>每日预算</span>
+                          <strong>{Math.round(item.summary.daily_budget.used_percent || 0)}%</strong>
+                          <small>
+                            {formatCost(item.summary.daily_budget.used_usd)} /{' '}
+                            {formatCost(item.summary.daily_budget.limit_usd)}
+                          </small>
+                        </div>
+                        <div className={styles.windowCard}>
+                          <span>周期预算</span>
+                          <strong>{Math.round(item.summary.weekly_budget.used_percent || 0)}%</strong>
+                          <small>
+                            {formatCost(item.summary.weekly_budget.used_usd)} /{' '}
+                            {formatCost(item.summary.weekly_budget.limit_usd)}
+                          </small>
+                        </div>
+                        <div className={styles.windowCard}>
+                          <span>周期请求数</span>
+                          <strong>{formatNumber(item.current_period_report.requests)}</strong>
+                          <small>
+                            失败请求 {formatNumber(item.current_period_report.failed_requests)}
+                          </small>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className={styles.resultSection}>
+                      <div className={styles.sectionHeader}>
+                        <div>
+                          <span className={styles.sectionKicker}>费用趋势</span>
+                          <h3>最近每日费用</h3>
+                        </div>
+                        <p>金额标签和柱体按同一节奏对齐，便于快速比较哪几天出现明显抬升。</p>
+                      </div>
+
+                      <div className={styles.trendBars}>
+                        {item.recent_days.map((day) => (
+                          <div key={day.day} className={styles.trendBar}>
+                            <span className={styles.trendValue}>{formatCost(day.cost_usd)}</span>
+                            <div className={styles.trendTrack}>
+                              <div
+                                className={styles.trendFill}
+                                style={{
+                                  height: `${Math.max(8, (Number(day.cost_usd || 0) / maxCost) * 120)}px`,
+                                }}
+                              />
+                            </div>
+                            <small className={styles.trendLabel}>{day.day.slice(5)}</small>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
                   </div>
                 </Card>
               );

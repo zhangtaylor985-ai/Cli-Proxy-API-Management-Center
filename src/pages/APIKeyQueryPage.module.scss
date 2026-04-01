@@ -263,6 +263,25 @@
   padding: 0;
 }
 
+.resultTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  strong {
+    font-size: 18px;
+    color: var(--text-primary);
+  }
+}
+
+.resultTitleLabel {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .lastUsed {
   color: var(--text-tertiary);
   font-size: 12px;
@@ -275,6 +294,7 @@
   justify-content: flex-end;
   gap: 12px 18px;
   flex-wrap: wrap;
+  padding-left: 16px;
 }
 
 .periodWindow {
@@ -295,6 +315,55 @@
     max-width: none;
     text-align: left;
   }
+}
+
+.resultStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.resultSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px;
+  border-top: 1px solid rgba(139, 134, 128, 0.14);
+  background: linear-gradient(180deg, rgba(139, 134, 128, 0.03) 0%, rgba(139, 134, 128, 0.06) 100%);
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+
+  h3 {
+    margin: 4px 0 0;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0;
+    max-width: 48ch;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+}
+
+.sectionKicker {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .inlineMetrics {
@@ -363,31 +432,23 @@
 
 .trendBars {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-  gap: 12px;
-  align-items: end;
-  margin-bottom: 18px;
-  padding: 2px 4px 0;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 14px 12px;
+  align-items: stretch;
+  padding: 4px 2px 0;
 }
 
 .trendBar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-rows: 22px minmax(132px, 1fr) 20px;
+  gap: 10px;
   min-width: 0;
-
-  span,
-  small {
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
 }
 
 .trendTrack {
   width: 100%;
-  max-width: 92px;
-  min-height: 120px;
+  max-width: 84px;
+  min-height: 132px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -395,6 +456,16 @@
   padding: 6px 0;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(139, 134, 128, 0.1) 0%, rgba(139, 134, 128, 0.24) 100%);
+}
+
+.trendValue,
+.trendLabel {
+  display: block;
+  width: 100%;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .trendFill {

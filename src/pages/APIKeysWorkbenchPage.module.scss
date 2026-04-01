@@ -35,6 +35,10 @@
   gap: $spacing-sm;
   align-items: end;
 
+  :global(.form-group) {
+    margin-bottom: 0;
+  }
+
   @include mobile {
     width: 100%;
     grid-template-columns: 1fr;
@@ -64,6 +68,88 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.groupCard {
+  overflow: hidden;
+}
+
+.groupHeaderActions {
+  display: flex;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.groupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: $spacing-md;
+}
+
+.groupItem {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.groupItemActive {
+  border-color: rgba(139, 134, 128, 0.6);
+  box-shadow:
+    0 0 0 1px rgba(139, 134, 128, 0.22),
+    var(--shadow);
+}
+
+.groupItemTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-sm;
+}
+
+.groupItemBadges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.groupBudgetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.groupActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.groupModalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .metricLabel {
@@ -127,7 +213,10 @@
   background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   color: var(--text-primary);
   cursor: pointer;
-  transition: transform $transition-fast, border-color $transition-fast, box-shadow $transition-fast;
+  transition:
+    transform $transition-fast,
+    border-color $transition-fast,
+    box-shadow $transition-fast;
 
   &:hover {
     border-color: var(--border-hover);
@@ -138,7 +227,9 @@
 
 .listItemActive {
   border-color: rgba(139, 134, 128, 0.6);
-  box-shadow: 0 0 0 1px rgba(139, 134, 128, 0.22), var(--shadow);
+  box-shadow:
+    0 0 0 1px rgba(139, 134, 128, 0.22),
+    var(--shadow);
 }
 
 .listItemTop {
@@ -183,6 +274,50 @@
   flex-wrap: wrap;
 }
 
+.editorLead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-lg;
+
+  h3 {
+    margin: 6px 0 0;
+    font-size: 24px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+}
+
+.sectionKicker {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editorLeadMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
 .heroMetrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -192,6 +327,56 @@
   @include mobile {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.createHint {
+  margin-bottom: $spacing-lg;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 134, 128, 0.22);
+  background: linear-gradient(180deg, rgba(139, 134, 128, 0.08) 0%, rgba(139, 134, 128, 0.14) 100%);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.groupBindingNote {
+  margin-top: $spacing-lg;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(91, 160, 141, 0.28);
+  background: linear-gradient(180deg, rgba(91, 160, 141, 0.08) 0%, rgba(116, 196, 173, 0.16) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  strong {
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  span {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+.createModalInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: $spacing-sm;
+  align-items: center;
+}
+
+.createModalHint {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .heroMetric {
@@ -209,7 +394,50 @@
   }
 }
 
-.dualGrid {
+.heroMetricHint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.editorSections {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding-top: $spacing-lg;
+  border-top: 1px solid rgba(139, 134, 128, 0.16);
+}
+
+.editorSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+
+  h4 {
+    margin: 6px 0 0;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0;
+    max-width: 48ch;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+}
+
+.sectionGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-md;
@@ -221,12 +449,28 @@
 
 .toggleGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-md;
-  margin-top: $spacing-lg;
 
   @include mobile {
     grid-template-columns: 1fr;
+  }
+}
+
+.toggleCard {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
   }
 }
 
@@ -234,7 +478,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-md;
-  margin-top: $spacing-lg;
 
   @include mobile {
     grid-template-columns: 1fr;
@@ -366,33 +609,38 @@
 
 .trendBars {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
-  gap: 10px;
-  align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 14px 12px;
+  align-items: stretch;
   min-height: 220px;
 }
 
 .trendBar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-rows: 22px minmax(140px, 1fr) 20px;
+  gap: 10px;
 }
 
 .trendValue,
 .trendLabel {
+  display: block;
+  width: 100%;
   font-size: 11px;
   color: var(--text-secondary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .trendTrack {
   width: 100%;
+  max-width: 84px;
   min-height: 140px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(139, 134, 128, 0.12) 0%, rgba(139, 134, 128, 0.28) 100%);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  margin: 0 auto;
   padding: 6px 0;
 }
 

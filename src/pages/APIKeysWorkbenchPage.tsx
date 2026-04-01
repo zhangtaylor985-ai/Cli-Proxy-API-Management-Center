@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { apiKeyGroupsApi } from '@/services/api/apiKeyGroups';
+import type { ApiKeyGroupView } from '@/services/api/apiKeyGroups';
 import { apiKeyRecordsApi } from '@/services/api/apiKeyRecords';
 import type {
   ApiKeyDailyLimitView,
@@ -15,10 +18,13 @@ import type {
   ApiKeyRecordSummaryView,
 } from '@/services/api/apiKeyRecords';
 import { useNotificationStore } from '@/stores';
+import { generateSecureApiKey } from '@/utils/apiKeys';
+import { isValidApiKeyCharset } from '@/utils/validation';
 import styles from './APIKeysWorkbenchPage.module.scss';
 
 type WorkbenchDraft = {
   apiKey: string;
+  groupId: string;
   fastMode: boolean;
   enableClaudeModels: boolean;
   claudeUsageLimitUsd: string;
@@ -39,6 +45,13 @@ type WorkbenchDraft = {
   claudeFailoverRules: string;
 };
 
+type GroupDraft = {
+  id: string;
+  name: string;
+  dailyBudgetUsd: string;
+  weeklyBudgetUsd: string;
+};
+
 const RANGE_OPTIONS = [
   { value: '7d', label: '近 7 天' },
   { value: '14d', label: '近 14 天' },
@@ -52,9 +65,33 @@ const FAMILY_OPTIONS = [
   { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
 ];
 
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function getLocalHourInputValue(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:00`;
+}
+
+function getCurrentHourInputValue(): string {
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  return getLocalHourInputValue(now);
+}
+
+function normalizeHourInputValue(raw: string): string {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return '';
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return '';
+  parsed.setMinutes(0, 0, 0);
+  return getLocalHourInputValue(parsed);
+}
+
 function emptyDraft(): WorkbenchDraft {
   return {
     apiKey: '',
+    groupId: '',
     fastMode: false,
     enableClaudeModels: false,
     claudeUsageLimitUsd: '',
@@ -66,13 +103,22 @@ function emptyDraft(): WorkbenchDraft {
     dailyLimits: '',
     dailyBudgetUsd: '',
     weeklyBudgetUsd: '',
-    weeklyBudgetAnchorAt: '',
+    weeklyBudgetAnchorAt: getCurrentHourInputValue(),
     tokenPackageUsd: '',
     tokenPackageStartedAt: '',
     modelRoutingRules: '[]',
     claudeFailoverEnabled: false,
     claudeFailoverTarget: '',
     claudeFailoverRules: '[]',
+  };
+}
+
+function emptyGroupDraft(): GroupDraft {
+  return {
+    id: '',
+    name: '',
+    dailyBudgetUsd: '',
+    weeklyBudgetUsd: '',
   };
 }
 
@@ -112,6 +158,10 @@ function toIsoOrEmpty(value: string): string {
   if (!trimmed) return '';
   const parsed = new Date(trimmed);
   return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+}
+
+function toHourlyIsoOrEmpty(value: string): string {
+  return toIsoOrEmpty(normalizeHourInputValue(value));
 }
 
 function linesFromMap(source: Record<string, number>): string {
@@ -157,6 +207,7 @@ function parseJsonArray(source: string): Array<Record<string, unknown>> {
 function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): WorkbenchDraft {
   return {
     apiKey: policy.api_key || fallbackKey,
+    groupId: policy.group_id || '',
     fastMode: Boolean(policy.fast_mode),
     enableClaudeModels: Boolean(policy.enable_claude_models),
     claudeUsageLimitUsd: policy.claude_usage_limit_usd ? String(policy.claude_usage_limit_usd) : '',
@@ -168,7 +219,7 @@ function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): WorkbenchDraft 
     dailyLimits: linesFromMap(policy.daily_limits || {}),
     dailyBudgetUsd: policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
     weeklyBudgetUsd: policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
-    weeklyBudgetAnchorAt: formatDateTimeLocal(policy.weekly_budget_anchor_at),
+    weeklyBudgetAnchorAt: normalizeHourInputValue(policy.weekly_budget_anchor_at),
     tokenPackageUsd: policy.token_package_usd ? String(policy.token_package_usd) : '',
     tokenPackageStartedAt: formatDateTimeLocal(policy.token_package_started_at),
     modelRoutingRules: JSON.stringify(policy.model_routing_rules || [], null, 2),
@@ -181,6 +232,7 @@ function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): WorkbenchDraft 
 function toPolicyView(draft: WorkbenchDraft): ApiKeyPolicyView {
   return {
     api_key: draft.apiKey.trim(),
+    group_id: draft.groupId.trim(),
     fast_mode: draft.fastMode,
     enable_claude_models: draft.enableClaudeModels,
     claude_usage_limit_usd: Number(draft.claudeUsageLimitUsd || 0),
@@ -192,13 +244,26 @@ function toPolicyView(draft: WorkbenchDraft): ApiKeyPolicyView {
     daily_limits: mapFromLines(draft.dailyLimits),
     daily_budget_usd: Number(draft.dailyBudgetUsd || 0),
     weekly_budget_usd: Number(draft.weeklyBudgetUsd || 0),
-    weekly_budget_anchor_at: toIsoOrEmpty(draft.weeklyBudgetAnchorAt),
+    weekly_budget_anchor_at:
+      Number(draft.weeklyBudgetUsd || 0) > 0 ? toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt) : '',
     token_package_usd: Number(draft.tokenPackageUsd || 0),
     token_package_started_at: toIsoOrEmpty(draft.tokenPackageStartedAt),
     model_routing_rules: parseJsonArray(draft.modelRoutingRules),
     claude_failover_enabled: draft.claudeFailoverEnabled,
     claude_failover_target: draft.claudeFailoverTarget.trim(),
     claude_failover_rules: parseJsonArray(draft.claudeFailoverRules),
+  };
+}
+
+function toGroupDraft(group: ApiKeyGroupView | null): GroupDraft {
+  if (!group) {
+    return emptyGroupDraft();
+  }
+  return {
+    id: group.id,
+    name: group.name,
+    dailyBudgetUsd: String(group.daily_budget_usd || 0),
+    weeklyBudgetUsd: String(group.weekly_budget_usd || 0),
   };
 }
 
@@ -213,6 +278,13 @@ function renderWindow(windowView: ApiKeyRecordSummaryView['daily_budget']) {
     return '未配置';
   }
   return `${formatCost(windowView.used_usd)} / ${formatCost(windowView.limit_usd)}`;
+}
+
+function formatWindowRange(windowView: ApiKeyRecordSummaryView['daily_budget']) {
+  if (!windowView.enabled || (!windowView.start_at && !windowView.end_at)) {
+    return '未配置';
+  }
+  return `${formatDateTime(windowView.start_at)} - ${formatDateTime(windowView.end_at)}`;
 }
 
 function DailyLimitBar({ item }: { item: ApiKeyDailyLimitView }) {
@@ -280,19 +352,60 @@ export function APIKeysWorkbenchPage() {
   const [range, setRange] = useState('14d');
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<ApiKeyRecordSummaryView[]>([]);
+  const [groups, setGroups] = useState<ApiKeyGroupView[]>([]);
   const [selectedKey, setSelectedKey] = useState('');
   const [detail, setDetail] = useState<ApiKeyRecordDetailView | null>(null);
   const [draft, setDraft] = useState<WorkbenchDraft>(emptyDraft);
   const [listLoading, setListLoading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyAction, setBusyAction] = useState<'reset' | 'delete' | null>(null);
   const [error, setError] = useState('');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalKey, setCreateModalKey] = useState('');
+  const [createModalError, setCreateModalError] = useState('');
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ApiKeyGroupView | null>(null);
+  const [groupDraft, setGroupDraft] = useState<GroupDraft>(emptyGroupDraft);
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupDeletingId, setGroupDeletingId] = useState('');
+  const [groupModalError, setGroupModalError] = useState('');
+  const createModalInputId = useId();
 
   const selectedSummary = useMemo(
     () => items.find((item) => item.api_key === selectedKey) ?? detail?.summary ?? null,
     [detail?.summary, items, selectedKey]
   );
+  const activeGroup = useMemo(
+    () => groups.find((item) => item.id === draft.groupId) ?? detail?.group ?? null,
+    [detail?.group, draft.groupId, groups]
+  );
+  const groupOptions = useMemo(
+    () => [
+      { value: '', label: '不绑定账户组' },
+      ...groups.map((item) => ({
+        value: item.id,
+        label: `${item.name} · 日 $${item.daily_budget_usd} / 周 $${item.weekly_budget_usd}`,
+      })),
+    ],
+    [groups]
+  );
+  const groupManagedBudget = Boolean(activeGroup);
+
+  const loadGroups = useCallback(async () => {
+    setGroupsLoading(true);
+    try {
+      const response = await apiKeyGroupsApi.list();
+      setGroups(response);
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : '加载账户组失败';
+      setError(message);
+      showNotification(message, 'error');
+    } finally {
+      setGroupsLoading(false);
+    }
+  }, [showNotification]);
 
   const loadDetail = useCallback(
     async (apiKey: string, nextRange = range) => {
@@ -329,7 +442,7 @@ export function APIKeysWorkbenchPage() {
         const candidate =
           preferredKey && response.some((item) => item.api_key === preferredKey)
             ? preferredKey
-            : response[0]?.api_key ?? '';
+            : (response[0]?.api_key ?? '');
 
         if (candidate) {
           void loadDetail(candidate, nextRange);
@@ -339,7 +452,8 @@ export function APIKeysWorkbenchPage() {
           setDraft(emptyDraft());
         }
       } catch (requestError) {
-        const message = requestError instanceof Error ? requestError.message : '加载 API Key 列表失败';
+        const message =
+          requestError instanceof Error ? requestError.message : '加载 API Key 列表失败';
         setError(message);
         showNotification(message, 'error');
       } finally {
@@ -353,8 +467,13 @@ export function APIKeysWorkbenchPage() {
     void loadList(selectedKey || undefined, range);
   }, [loadList, range]);
 
+  useEffect(() => {
+    void loadGroups();
+  }, [loadGroups]);
+
   useHeaderRefresh(() => {
     void loadList(selectedKey, range);
+    void loadGroups();
   });
 
   const trendDays = detail?.recent_days ?? [];
@@ -372,16 +491,61 @@ export function APIKeysWorkbenchPage() {
     );
   }, [items]);
 
-  const updateDraft = useCallback(<K extends keyof WorkbenchDraft>(key: K, value: WorkbenchDraft[K]) => {
-    setDraft((current) => ({ ...current, [key]: value }));
-  }, []);
+  const updateDraft = useCallback(
+    <K extends keyof WorkbenchDraft>(key: K, value: WorkbenchDraft[K]) => {
+      setDraft((current) => ({ ...current, [key]: value }));
+    },
+    []
+  );
+
+  const updateGroupDraft = useCallback(
+    <K extends keyof GroupDraft>(key: K, value: GroupDraft[K]) => {
+      setGroupDraft((current) => ({ ...current, [key]: value }));
+    },
+    []
+  );
 
   const createNew = useCallback(() => {
+    setCreateModalKey(generateSecureApiKey());
+    setCreateModalError('');
+    setCreateModalOpen(true);
+  }, []);
+
+  const closeCreateModal = useCallback(() => {
+    setCreateModalOpen(false);
+    setCreateModalKey('');
+    setCreateModalError('');
+  }, []);
+
+  const handleGenerateCreateKey = useCallback(() => {
+    setCreateModalKey(generateSecureApiKey());
+    setCreateModalError('');
+  }, []);
+
+  const handleConfirmCreate = useCallback(() => {
+    const trimmedKey = createModalKey.trim();
+    if (!trimmedKey) {
+      setCreateModalError('API Key 不能为空');
+      return;
+    }
+    if (!isValidApiKeyCharset(trimmedKey)) {
+      setCreateModalError('API Key 包含无效字符');
+      return;
+    }
+    if (items.some((item) => item.api_key === trimmedKey)) {
+      setCreateModalError('API Key 已存在');
+      return;
+    }
+
     setSelectedKey('');
     setDetail(null);
-    setDraft(emptyDraft());
+    setDraft({
+      ...emptyDraft(),
+      apiKey: trimmedKey,
+    });
     setError('');
-  }, []);
+    closeCreateModal();
+  }, [closeCreateModal, createModalKey, items]);
 
   const handleSave = useCallback(async () => {
     const trimmedKey = draft.apiKey.trim();
@@ -462,6 +626,94 @@ export function APIKeysWorkbenchPage() {
     }
   }, [loadList, range, selectedKey, showNotification]);
 
+  const openCreateGroup = useCallback(() => {
+    setEditingGroup(null);
+    setGroupDraft(emptyGroupDraft());
+    setGroupModalError('');
+    setGroupModalOpen(true);
+  }, []);
+
+  const openEditGroup = useCallback((group: ApiKeyGroupView) => {
+    setEditingGroup(group);
+    setGroupDraft(toGroupDraft(group));
+    setGroupModalError('');
+    setGroupModalOpen(true);
+  }, []);
+
+  const closeGroupModal = useCallback(() => {
+    setGroupModalOpen(false);
+    setEditingGroup(null);
+    setGroupDraft(emptyGroupDraft());
+    setGroupModalError('');
+  }, []);
+
+  const handleSaveGroup = useCallback(async () => {
+    const trimmedName = groupDraft.name.trim();
+    if (!trimmedName) {
+      setGroupModalError('账户组名称不能为空');
+      return;
+    }
+    const payload = {
+      id: groupDraft.id.trim(),
+      name: trimmedName,
+      daily_budget_usd: Number(groupDraft.dailyBudgetUsd || 0),
+      weekly_budget_usd: Number(groupDraft.weeklyBudgetUsd || 0),
+    };
+    if (!Number.isFinite(payload.daily_budget_usd) || payload.daily_budget_usd < 0) {
+      setGroupModalError('每日额度必须是大于等于 0 的数字');
+      return;
+    }
+    if (!Number.isFinite(payload.weekly_budget_usd) || payload.weekly_budget_usd < 0) {
+      setGroupModalError('每周额度必须是大于等于 0 的数字');
+      return;
+    }
+
+    setGroupSaving(true);
+    setGroupModalError('');
+    try {
+      if (editingGroup) {
+        await apiKeyGroupsApi.update(editingGroup.id, payload);
+        showNotification('账户组已更新', 'success');
+      } else {
+        await apiKeyGroupsApi.create(payload);
+        showNotification('账户组已创建', 'success');
+      }
+      await loadGroups();
+      closeGroupModal();
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : '保存账户组失败';
+      setGroupModalError(message);
+      showNotification(message, 'error');
+    } finally {
+      setGroupSaving(false);
+    }
+  }, [closeGroupModal, editingGroup, groupDraft, loadGroups, showNotification]);
+
+  const handleDeleteGroup = useCallback(
+    async (group: ApiKeyGroupView) => {
+      if (group.is_system) {
+        showNotification('系统账户组不允许删除', 'error');
+        return;
+      }
+      if (!window.confirm(`确认删除账户组 ${group.name}？`)) return;
+      setGroupDeletingId(group.id);
+      try {
+        await apiKeyGroupsApi.remove(group.id);
+        if (draft.groupId === group.id) {
+          updateDraft('groupId', '');
+        }
+        showNotification('账户组已删除', 'success');
+        await loadGroups();
+      } catch (requestError) {
+        const message = requestError instanceof Error ? requestError.message : '删除账户组失败';
+        showNotification(message, 'error');
+      } finally {
+        setGroupDeletingId('');
+      }
+    },
+    [draft.groupId, loadGroups, showNotification, updateDraft]
+  );
+
   return (
     <div className={styles.container}>
       <div className={styles.pageHeader}>
@@ -483,7 +735,11 @@ export function APIKeysWorkbenchPage() {
             placeholder="搜索 API Key"
           />
           <Select value={range} options={RANGE_OPTIONS} onChange={setRange} fullWidth={false} />
-          <Button variant="secondary" onClick={() => void loadList(selectedKey, range)} loading={listLoading}>
+          <Button
+            variant="secondary"
+            onClick={() => void loadList(selectedKey, range)}
+            loading={listLoading}
+          >
             刷新
           </Button>
           <Button variant="secondary" onClick={createNew}>
@@ -493,6 +749,97 @@ export function APIKeysWorkbenchPage() {
       </div>
 
       {error && <div className={styles.errorBox}>{error}</div>}
+
+      <Modal
+        open={createModalOpen}
+        onClose={closeCreateModal}
+        title="新建 API Key"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeCreateModal}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmCreate}>继续配置</Button>
+          </>
+        }
+      >
+        <div className="form-group">
+          <label htmlFor={createModalInputId}>API Key</label>
+          <div className={styles.createModalInputRow}>
+            <input
+              id={createModalInputId}
+              className="input"
+              value={createModalKey}
+              onChange={(event) => {
+                setCreateModalKey(event.target.value);
+                if (createModalError) setCreateModalError('');
+              }}
+              placeholder="输入或生成 API Key"
+              aria-invalid={Boolean(createModalError)}
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={handleGenerateCreateKey}>
+              生成
+            </Button>
+          </div>
+          <div className="hint">
+            已自动生成一个安全 API Key。你可以手动修改，或点击“生成”重新创建。
+          </div>
+          {createModalError && <div className="error-box">{createModalError}</div>}
+        </div>
+        <div className={styles.createModalHint}>
+          确认后会进入右侧编辑态，只有点击页面上的“保存”才会真正创建并持久化。
+        </div>
+      </Modal>
+
+      <Modal
+        open={groupModalOpen}
+        onClose={closeGroupModal}
+        title={editingGroup ? '编辑账户组' : '新建账户组'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeGroupModal}>
+              取消
+            </Button>
+            <Button onClick={handleSaveGroup} loading={groupSaving}>
+              保存账户组
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.groupModalGrid}>
+          <Input
+            label="账户组 ID"
+            value={groupDraft.id}
+            onChange={(event) => updateGroupDraft('id', event.target.value)}
+            placeholder={editingGroup ? editingGroup.id : '例如 dedicated-v2'}
+            disabled={Boolean(editingGroup)}
+            hint={editingGroup ? '已有账户组不允许修改 ID。' : '可留空，系统会基于名称自动生成。'}
+          />
+          <Input
+            label="账户组名称"
+            value={groupDraft.name}
+            onChange={(event) => updateGroupDraft('name', event.target.value)}
+            placeholder="例如 双人车"
+          />
+          <Input
+            label="每日额度 USD"
+            type="number"
+            min="0"
+            step="0.01"
+            value={groupDraft.dailyBudgetUsd}
+            onChange={(event) => updateGroupDraft('dailyBudgetUsd', event.target.value)}
+          />
+          <Input
+            label="每周额度 USD"
+            type="number"
+            min="0"
+            step="0.01"
+            value={groupDraft.weeklyBudgetUsd}
+            onChange={(event) => updateGroupDraft('weeklyBudgetUsd', event.target.value)}
+          />
+        </div>
+        {groupModalError && <div className="error-box">{groupModalError}</div>}
+      </Modal>
 
       <div className={styles.summaryGrid}>
         <Card className={styles.summaryCard}>
@@ -517,11 +864,95 @@ export function APIKeysWorkbenchPage() {
         </Card>
       </div>
 
+      <Card
+        className={styles.groupCard}
+        title="账户组"
+        extra={
+          <div className={styles.groupHeaderActions}>
+            <span className={styles.listMeta}>
+              {groupsLoading ? '加载中...' : `${groups.length} 组`}
+            </span>
+            <Button variant="secondary" onClick={() => void loadGroups()} loading={groupsLoading}>
+              刷新账户组
+            </Button>
+            <Button variant="secondary" onClick={openCreateGroup}>
+              新建账户组
+            </Button>
+          </div>
+        }
+      >
+        {groups.length ? (
+          <div className={styles.groupGrid}>
+            {groups.map((group) => {
+              const selected = draft.groupId === group.id || selectedSummary?.group_id === group.id;
+              return (
+                <div
+                  key={group.id}
+                  className={`${styles.groupItem} ${selected ? styles.groupItemActive : ''}`}
+                >
+                  <div className={styles.groupItemTop}>
+                    <div>
+                      <strong>{group.name}</strong>
+                      <div className={styles.listItemMeta}>
+                        ID: {group.id} · {group.member_count} 个 API Key
+                      </div>
+                    </div>
+                    <div className={styles.groupItemBadges}>
+                      {group.is_system && (
+                        <span className={`${styles.badge} ${styles.badgeSafe}`}>系统组</span>
+                      )}
+                      {selected && (
+                        <span className={`${styles.badge} ${styles.badgeWarn}`}>当前绑定</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.groupBudgetRow}>
+                    <span>日额度 {formatCost(group.daily_budget_usd)}</span>
+                    <span>周额度 {formatCost(group.weekly_budget_usd)}</span>
+                  </div>
+                  <div className={styles.groupActions}>
+                    <Button variant="secondary" size="sm" onClick={() => openEditGroup(group)}>
+                      编辑
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => updateDraft('groupId', group.id)}
+                      disabled={draft.groupId === group.id}
+                    >
+                      绑定到当前草稿
+                    </Button>
+                    {!group.is_system && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => void handleDeleteGroup(group)}
+                        loading={groupDeletingId === group.id}
+                      >
+                        删除
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            暂无账户组。创建后即可把多个 API Key 归到同一预算模板下。
+          </div>
+        )}
+      </Card>
+
       <div className={styles.layout}>
         <Card
           className={styles.listCard}
           title="API Key 列表"
-          extra={<span className={styles.listMeta}>{listLoading ? '加载中...' : `${items.length} 项`}</span>}
+          extra={
+            <span className={styles.listMeta}>
+              {listLoading ? '加载中...' : `${items.length} 项`}
+            </span>
+          }
         >
           <div className={styles.listPane}>
             {items.length === 0 ? (
@@ -529,7 +960,10 @@ export function APIKeysWorkbenchPage() {
             ) : (
               items.map((item) => {
                 const dailyTone = budgetTone(
-                  Math.max(item.daily_budget.used_percent || 0, item.weekly_budget.used_percent || 0)
+                  Math.max(
+                    item.daily_budget.used_percent || 0,
+                    item.weekly_budget.used_percent || 0
+                  )
                 );
                 return (
                   <button
@@ -542,12 +976,17 @@ export function APIKeysWorkbenchPage() {
                       <div>
                         <strong>{item.masked_api_key}</strong>
                         <div className={styles.listItemMeta}>
-                          {item.registered ? '已注册' : '仅策略配置'} · {item.policy_family || 'default'}
+                          {item.registered ? '已注册' : '仅策略配置'} ·{' '}
+                          {item.policy_family || 'default'}
+                          {item.group_name ? ` · ${item.group_name}` : ''}
                         </div>
                       </div>
                       <span className={`${styles.badge} ${styles[`badge${dailyTone}`]}`}>
                         {formatPercent(
-                          Math.max(item.daily_budget.used_percent || 0, item.weekly_budget.used_percent || 0)
+                          Math.max(
+                            item.daily_budget.used_percent || 0,
+                            item.weekly_budget.used_percent || 0
+                          )
                         )}
                       </span>
                     </div>
@@ -556,7 +995,9 @@ export function APIKeysWorkbenchPage() {
                       <span>{formatCost(item.current_period.cost_usd)} 周期</span>
                       <span>{formatNumber(item.today.total_tokens)} tokens</span>
                     </div>
-                    <div className={styles.listItemMeta}>最近使用: {formatDateTime(item.last_used_at)}</div>
+                    <div className={styles.listItemMeta}>
+                      最近使用: {formatDateTime(item.last_used_at)}
+                    </div>
                   </button>
                 );
               })
@@ -567,13 +1008,23 @@ export function APIKeysWorkbenchPage() {
         <div className={styles.detailColumn}>
           <Card
             className={styles.heroCard}
-            title={selectedKey ? '详情与编辑' : '创建 API Key'}
+            title={selectedKey ? '策略编辑工作台' : '创建 API Key'}
             extra={
               <div className={styles.heroActions}>
-                <Button variant="secondary" onClick={handleResetPolicy} disabled={!selectedKey} loading={busyAction === 'reset'}>
+                <Button
+                  variant="secondary"
+                  onClick={handleResetPolicy}
+                  disabled={!selectedKey}
+                  loading={busyAction === 'reset'}
+                >
                   清空显式策略
                 </Button>
-                <Button variant="danger" onClick={handleDelete} disabled={!selectedKey} loading={busyAction === 'delete'}>
+                <Button
+                  variant="danger"
+                  onClick={handleDelete}
+                  disabled={!selectedKey}
+                  loading={busyAction === 'delete'}
+                >
                   删除
                 </Button>
                 <Button onClick={handleSave} loading={saving}>
@@ -582,153 +1033,292 @@ export function APIKeysWorkbenchPage() {
               </div>
             }
           >
+            <div className={styles.editorLead}>
+              <div>
+                <span className={styles.sectionKicker}>
+                  {selectedKey ? '当前编辑' : '创建草稿'}
+                </span>
+                <h3>{selectedSummary?.masked_api_key ?? draft.apiKey ?? '新 API Key'}</h3>
+              </div>
+              <div className={styles.editorLeadMeta}>
+                <span>账户组：{activeGroup?.name ?? '未绑定'}</span>
+                <span>最近使用：{formatDateTime(selectedSummary?.last_used_at)}</span>
+              </div>
+            </div>
+
             <div className={styles.heroMetrics}>
               <div className={styles.heroMetric}>
                 <span className={styles.metricLabel}>今日费用</span>
                 <strong>{formatCost(selectedSummary?.today.cost_usd)}</strong>
+                <span className={styles.heroMetricHint}>最近 24 小时累计</span>
               </div>
               <div className={styles.heroMetric}>
                 <span className={styles.metricLabel}>今日 Tokens</span>
                 <strong>{formatNumber(selectedSummary?.today.total_tokens)}</strong>
+                <span className={styles.heroMetricHint}>快速判断请求量是否异常</span>
               </div>
               <div className={styles.heroMetric}>
                 <span className={styles.metricLabel}>当前周期费用</span>
                 <strong>{formatCost(selectedSummary?.current_period.cost_usd)}</strong>
+                <span className={styles.heroMetricHint}>
+                  {selectedSummary ? formatWindowRange(selectedSummary.weekly_budget) : '未配置'}
+                </span>
               </div>
               <div className={styles.heroMetric}>
                 <span className={styles.metricLabel}>Token 包余额</span>
-                <strong>{selectedSummary ? formatCost(selectedSummary.token_package.remaining_usd) : '未配置'}</strong>
+                <strong>
+                  {selectedSummary
+                    ? formatCost(selectedSummary.token_package.remaining_usd)
+                    : '未配置'}
+                </strong>
+                <span className={styles.heroMetricHint}>
+                  {selectedSummary?.token_package.started_at
+                    ? `开始于 ${formatDateTime(selectedSummary.token_package.started_at)}`
+                    : '预付流量包未启用'}
+                </span>
               </div>
             </div>
 
-            <div className={styles.dualGrid}>
-              <Input
-                label="API Key"
-                value={draft.apiKey}
-                onChange={(event) => updateDraft('apiKey', event.target.value)}
-                placeholder="输入 API Key"
-              />
-              <div className="form-group">
-                <label>Claude 转 GPT 家族</label>
-                <Select value={draft.claudeGptTargetFamily} options={FAMILY_OPTIONS} onChange={(value) => updateDraft('claudeGptTargetFamily', value)} />
+            {!selectedKey && (
+              <div className={styles.createHint}>
+                点击“新建 Key”只会进入草稿态，填写完成后点击“保存”才会真正创建并持久化。
               </div>
-              <Input
-                label="Upstream Base URL"
-                value={draft.upstreamBaseUrl}
-                onChange={(event) => updateDraft('upstreamBaseUrl', event.target.value)}
-                placeholder="可选"
-              />
-              <Input
-                label="Claude 累计预算 USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.claudeUsageLimitUsd}
-                onChange={(event) => updateDraft('claudeUsageLimitUsd', event.target.value)}
-              />
-              <Input
-                label="每日预算 USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.dailyBudgetUsd}
-                onChange={(event) => updateDraft('dailyBudgetUsd', event.target.value)}
-              />
-              <Input
-                label="每周期预算 USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.weeklyBudgetUsd}
-                onChange={(event) => updateDraft('weeklyBudgetUsd', event.target.value)}
-              />
-              <Input
-                label="周期锚点"
-                type="datetime-local"
-                value={draft.weeklyBudgetAnchorAt}
-                onChange={(event) => updateDraft('weeklyBudgetAnchorAt', event.target.value)}
-              />
-              <Input
-                label="Token 包 USD"
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.tokenPackageUsd}
-                onChange={(event) => updateDraft('tokenPackageUsd', event.target.value)}
-              />
-              <Input
-                label="Token 包开始时间"
-                type="datetime-local"
-                value={draft.tokenPackageStartedAt}
-                onChange={(event) => updateDraft('tokenPackageStartedAt', event.target.value)}
-              />
-              <Input
-                label="Claude Failover Target"
-                value={draft.claudeFailoverTarget}
-                onChange={(event) => updateDraft('claudeFailoverTarget', event.target.value)}
-                placeholder="例如 gpt-5.4(medium)"
-              />
-            </div>
+            )}
 
-            <div className={styles.toggleGrid}>
-              <ToggleSwitch
-                checked={draft.fastMode}
-                onChange={(value) => updateDraft('fastMode', value)}
-                label="Fast Mode"
-              />
-              <ToggleSwitch
-                checked={draft.enableClaudeModels}
-                onChange={(value) => updateDraft('enableClaudeModels', value)}
-                label="允许 Claude 原生模型"
-              />
-              <ToggleSwitch
-                checked={draft.enableClaudeOpus1M}
-                onChange={(value) => updateDraft('enableClaudeOpus1M', value)}
-                label="允许 Claude Opus 1M"
-              />
-              <ToggleSwitch
-                checked={draft.allowClaudeOpus46}
-                onChange={(value) => updateDraft('allowClaudeOpus46', value)}
-                label="允许 Claude Opus 4.6"
-              />
-              <ToggleSwitch
-                checked={draft.claudeFailoverEnabled}
-                onChange={(value) => updateDraft('claudeFailoverEnabled', value)}
-                label="Claude Failover"
-              />
-            </div>
+            <div className={styles.editorSections}>
+              <section className={styles.editorSection}>
+                <div className={styles.editorSectionHeader}>
+                  <div>
+                    <span className={styles.sectionKicker}>基础信息</span>
+                    <h4>身份、归属与上游入口</h4>
+                  </div>
+                  <p>先确认这把 key 自身是谁、归属哪个账户组，以及是否走单独的上游地址。</p>
+                </div>
 
-            <div className={styles.textAreaGrid}>
-              <label className={styles.textAreaField}>
-                <span>每日模型限额</span>
-                <textarea
-                  value={draft.dailyLimits}
-                  onChange={(event) => updateDraft('dailyLimits', event.target.value)}
-                  placeholder={'gpt-5.4=120\nclaude-sonnet-4-6=40'}
-                />
-              </label>
-              <label className={styles.textAreaField}>
-                <span>禁止模型</span>
-                <textarea
-                  value={draft.excludedModels}
-                  onChange={(event) => updateDraft('excludedModels', event.target.value)}
-                  placeholder={'gpt-5.5*\nclaude-opus-4-6*'}
-                />
-              </label>
-              <label className={styles.textAreaField}>
-                <span>Model Routing Rules JSON</span>
-                <textarea
-                  value={draft.modelRoutingRules}
-                  onChange={(event) => updateDraft('modelRoutingRules', event.target.value)}
-                />
-              </label>
-              <label className={styles.textAreaField}>
-                <span>Claude Failover Rules JSON</span>
-                <textarea
-                  value={draft.claudeFailoverRules}
-                  onChange={(event) => updateDraft('claudeFailoverRules', event.target.value)}
-                />
-              </label>
+                <div className={styles.sectionGrid}>
+                  <Input
+                    label="API Key"
+                    value={draft.apiKey}
+                    onChange={(event) => updateDraft('apiKey', event.target.value)}
+                    placeholder="输入 API Key"
+                  />
+                  <div className="form-group">
+                    <label>账户组</label>
+                    <Select
+                      value={draft.groupId}
+                      options={groupOptions}
+                      onChange={(value) => updateDraft('groupId', value)}
+                    />
+                    <div className="hint">
+                      {activeGroup
+                        ? `当前组 ${activeGroup.name}：日额度 ${formatCost(activeGroup.daily_budget_usd)}，周额度 ${formatCost(activeGroup.weekly_budget_usd)}。`
+                        : '未绑定账户组时，下面的日/周预算按 API Key 单独生效。'}
+                    </div>
+                  </div>
+                  <Input
+                    label="Upstream Base URL"
+                    value={draft.upstreamBaseUrl}
+                    onChange={(event) => updateDraft('upstreamBaseUrl', event.target.value)}
+                    placeholder="可选"
+                  />
+                </div>
+              </section>
+
+              <section className={styles.editorSection}>
+                <div className={styles.editorSectionHeader}>
+                  <div>
+                    <span className={styles.sectionKicker}>路由策略</span>
+                    <h4>模型家族、回退目标与运行开关</h4>
+                  </div>
+                  <p>把模型映射和行为开关放在一起看，避免在不同区域来回切换判断。</p>
+                </div>
+
+                <div className={styles.sectionGrid}>
+                  <div className="form-group">
+                    <label>Claude 转 GPT 家族</label>
+                    <Select
+                      value={draft.claudeGptTargetFamily}
+                      options={FAMILY_OPTIONS}
+                      onChange={(value) => updateDraft('claudeGptTargetFamily', value)}
+                    />
+                  </div>
+                  <Input
+                    label="Claude Failover Target"
+                    value={draft.claudeFailoverTarget}
+                    onChange={(event) => updateDraft('claudeFailoverTarget', event.target.value)}
+                    placeholder="例如 gpt-5.4(high)"
+                  />
+                </div>
+
+                <div className={styles.toggleGrid}>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.fastMode}
+                      onChange={(value) => updateDraft('fastMode', value)}
+                      label="Fast Mode"
+                    />
+                    <p>优先使用更激进的路由路径，适合更看重速度的场景。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.enableClaudeModels}
+                      onChange={(value) => updateDraft('enableClaudeModels', value)}
+                      label="允许 Claude 原生模型"
+                    />
+                    <p>开启后可直接命中 Claude 原生模型，而不是全部转为 GPT 家族。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.enableClaudeOpus1M}
+                      onChange={(value) => updateDraft('enableClaudeOpus1M', value)}
+                      label="允许 Claude Opus 1M"
+                    />
+                    <p>按需开放高上下文版本，避免默认对所有 key 暴露高成本能力。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.allowClaudeOpus46}
+                      onChange={(value) => updateDraft('allowClaudeOpus46', value)}
+                      label="允许 Claude Opus 4.6"
+                    />
+                    <p>独立控制 4.6 可用性，便于灰度和高成本模型限制。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.claudeFailoverEnabled}
+                      onChange={(value) => updateDraft('claudeFailoverEnabled', value)}
+                      label="Claude Failover"
+                    />
+                    <p>请求失败时启用兜底路由，减少单模型异常对终端用户的影响。</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className={styles.editorSection}>
+                <div className={styles.editorSectionHeader}>
+                  <div>
+                    <span className={styles.sectionKicker}>预算与周期</span>
+                    <h4>累计预算、日预算、周期预算与 Token 包</h4>
+                  </div>
+                  <p>把所有会影响费用控制的字段聚合在一个区块里，方便整体检查预算边界。</p>
+                </div>
+
+                {activeGroup && (
+                  <div className={styles.groupBindingNote}>
+                    <strong>账户组预算已接管基础额度</strong>
+                    <span>
+                      该 API Key 当前归属于 {activeGroup.name}
+                      。请求会先消耗账户组的日/周基础额度，再在基础额度耗尽后消耗 Token 包。
+                    </span>
+                  </div>
+                )}
+
+                <div className={styles.sectionGrid}>
+                  <Input
+                    label="Claude 累计预算 USD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draft.claudeUsageLimitUsd}
+                    onChange={(event) => updateDraft('claudeUsageLimitUsd', event.target.value)}
+                  />
+                  <Input
+                    label="每日预算 USD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draft.dailyBudgetUsd}
+                    onChange={(event) => updateDraft('dailyBudgetUsd', event.target.value)}
+                    disabled={groupManagedBudget}
+                    hint={
+                      groupManagedBudget ? '已绑定账户组，基础日预算由账户组统一控制。' : undefined
+                    }
+                  />
+                  <Input
+                    label="每周期预算 USD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draft.weeklyBudgetUsd}
+                    onChange={(event) => updateDraft('weeklyBudgetUsd', event.target.value)}
+                    disabled={groupManagedBudget}
+                    hint={
+                      groupManagedBudget ? '已绑定账户组，基础周预算由账户组统一控制。' : undefined
+                    }
+                  />
+                  <Input
+                    label="周期锚点"
+                    type="datetime-local"
+                    value={draft.weeklyBudgetAnchorAt}
+                    step="3600"
+                    onChange={(event) => updateDraft('weeklyBudgetAnchorAt', event.target.value)}
+                    onBlur={(event) =>
+                      updateDraft(
+                        'weeklyBudgetAnchorAt',
+                        normalizeHourInputValue(event.target.value) || getCurrentHourInputValue()
+                      )
+                    }
+                    disabled={groupManagedBudget}
+                  />
+                  <Input
+                    label="Token 包 USD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draft.tokenPackageUsd}
+                    onChange={(event) => updateDraft('tokenPackageUsd', event.target.value)}
+                  />
+                  <Input
+                    label="Token 包开始时间"
+                    type="datetime-local"
+                    value={draft.tokenPackageStartedAt}
+                    onChange={(event) => updateDraft('tokenPackageStartedAt', event.target.value)}
+                  />
+                </div>
+              </section>
+
+              <section className={styles.editorSection}>
+                <div className={styles.editorSectionHeader}>
+                  <div>
+                    <span className={styles.sectionKicker}>高级规则</span>
+                    <h4>限额、禁止模型与 JSON 规则</h4>
+                  </div>
+                  <p>把高复杂度配置放在最后，先完成基础策略，再补充精细化限制。</p>
+                </div>
+
+                <div className={styles.textAreaGrid}>
+                  <label className={styles.textAreaField}>
+                    <span>每日模型限额</span>
+                    <textarea
+                      value={draft.dailyLimits}
+                      onChange={(event) => updateDraft('dailyLimits', event.target.value)}
+                      placeholder={'gpt-5.4=120\nclaude-sonnet-4-6=40'}
+                    />
+                  </label>
+                  <label className={styles.textAreaField}>
+                    <span>禁止模型</span>
+                    <textarea
+                      value={draft.excludedModels}
+                      onChange={(event) => updateDraft('excludedModels', event.target.value)}
+                      placeholder={'gpt-5.5*\nclaude-opus-4-6*'}
+                    />
+                  </label>
+                  <label className={styles.textAreaField}>
+                    <span>Model Routing Rules JSON</span>
+                    <textarea
+                      value={draft.modelRoutingRules}
+                      onChange={(event) => updateDraft('modelRoutingRules', event.target.value)}
+                    />
+                  </label>
+                  <label className={styles.textAreaField}>
+                    <span>Claude Failover Rules JSON</span>
+                    <textarea
+                      value={draft.claudeFailoverRules}
+                      onChange={(event) => updateDraft('claudeFailoverRules', event.target.value)}
+                    />
+                  </label>
+                </div>
+              </section>
             </div>
           </Card>
 
@@ -788,7 +1378,9 @@ export function APIKeysWorkbenchPage() {
                       <div className={styles.trendTrack}>
                         <div
                           className={styles.trendFill}
-                          style={{ height: `${Math.max(8, (Number(item.cost_usd || 0) / maxCost) * 140)}px` }}
+                          style={{
+                            height: `${Math.max(8, (Number(item.cost_usd || 0) / maxCost) * 140)}px`,
+                          }}
                         />
                       </div>
                       <span className={styles.trendLabel}>{item.day.slice(5)}</span>
