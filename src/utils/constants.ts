@@ -13,7 +13,7 @@ const defineLanguageOrder = <T extends readonly Language[]>(
 export const CACHE_EXPIRY_MS = 30 * 1000; // 与基线保持一致，减少管理端压力
 
 // 网络与版本信息
-export const DEFAULT_API_PORT = 8317;
+export const DEFAULT_API_PORT = 53841;
 export const MANAGEMENT_API_PREFIX = '/v0/management';
 export const REQUEST_TIMEOUT_MS = 30 * 1000;
 export const VERSION_HEADER_KEYS = ['x-cpa-version', 'x-server-version'];
@@ -44,7 +44,7 @@ export const LANGUAGE_ORDER = defineLanguageOrder(['zh-CN', 'en', 'ru'] as const
 export const LANGUAGE_LABEL_KEYS: Record<Language, string> = {
   'zh-CN': 'language.chinese',
   en: 'language.english',
-  ru: 'language.russian'
+  ru: 'language.russian',
 };
 export const SUPPORTED_LANGUAGES = LANGUAGE_ORDER;
 
@@ -58,7 +58,7 @@ export const OAUTH_CARD_IDS = [
   'antigravity-oauth-card',
   'gemini-cli-oauth-card',
   'kimi-oauth-card',
-  'qwen-oauth-card'
+  'qwen-oauth-card',
 ];
 export const OAUTH_PROVIDERS = {
   CODEX: 'codex',
@@ -66,7 +66,7 @@ export const OAUTH_PROVIDERS = {
   ANTIGRAVITY: 'antigravity',
   GEMINI_CLI: 'gemini-cli',
   KIMI: 'kimi',
-  QWEN: 'qwen'
+  QWEN: 'qwen',
 } as const;
 
 // API 端点
@@ -78,5 +78,5 @@ export const API_ENDPOINTS = {
   AUTH_FILES: '/auth-files',
   OAUTH: '/oauth',
   USAGE: '/usage',
-  LOGS: '/logs'
+  LOGS: '/logs',
 } as const;

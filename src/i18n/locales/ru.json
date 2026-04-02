@@ -505,6 +505,22 @@
     "fetch_all": "Получить все",
     "remaining_amount": "Осталось {{count}}"
   },
+  "kimi_quota": {
+    "title": "Квота Kimi",
+    "empty_title": "Файлы авторизации Kimi отсутствуют",
+    "empty_desc": "Загрузите учётные данные Kimi, чтобы увидеть оставшуюся квоту.",
+    "idle": "Нажмите здесь, чтобы обновить квоту",
+    "loading": "Загрузка квоты...",
+    "load_failed": "Не удалось загрузить квоту: {{message}}",
+    "missing_auth_index": "В файле авторизации отсутствует auth_index",
+    "empty_data": "Данные по квоте отсутствуют",
+    "refresh_button": "Обновить квоту",
+    "fetch_all": "Получить все",
+    "weekly_limit": "Недельный лимит",
+    "limit_window": "Окно {{duration}}",
+    "limit_index": "Лимит {{index}}",
+    "reset_hint": "Сброс: {{hint}}"
+  },
   "vertex_import": {
     "title": "Вход с Vertex JSON",
     "description": "Загрузите JSON ключа сервисного аккаунта Google, чтобы сохранить его как auth-dir/vertex-<project>.json по тем же правилам, что и помощник CLI vertex-import.",
@@ -1031,7 +1047,8 @@
     "title": "Управление квотами",
     "description": "Следите за статусом квот OAuth для учётных данных Antigravity, Codex и Gemini CLI.",
     "refresh_files": "Обновить файлы авторизации",
-    "refresh_files_and_quota": "Обновить файлы и квоты"
+    "refresh_files_and_quota": "Обновить файлы и квоты",
+    "card_idle_hint": "Нажмите «Обновить файлы и квоты», чтобы загрузить актуальные данные по квотам."
   },
   "system_info": {
     "title": "Информация о центре управления",

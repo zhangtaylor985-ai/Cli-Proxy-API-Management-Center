@@ -32,6 +32,16 @@ export const detectApiBaseFromLocation = (): string => {
   }
 };
 
+export const detectPublicApiBaseFromLocation = (): string => {
+  try {
+    const { protocol, hostname } = window.location;
+    return normalizeApiBase(`${protocol}//${hostname}:${DEFAULT_API_PORT}`);
+  } catch (error) {
+    console.warn('Failed to detect public api base from location, fallback to default', error);
+    return normalizeApiBase(`http://localhost:${DEFAULT_API_PORT}`);
+  }
+};
+
 export const isLocalhost = (hostname: string): boolean => {
   const value = (hostname || '').toLowerCase();
   return value === 'localhost' || value === '127.0.0.1' || value === '[::1]';

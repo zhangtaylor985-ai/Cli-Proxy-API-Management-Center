@@ -81,6 +81,8 @@ export interface ApiKeyEventView {
 
 export interface ApiKeyPolicyView {
   api_key: string;
+  group_id: string;
+  group_name?: string;
   fast_mode: boolean;
   enable_claude_models: boolean;
   claude_usage_limit_usd: number;
@@ -104,6 +106,8 @@ export interface ApiKeyPolicyView {
 export interface ApiKeyRecordSummaryView {
   api_key: string;
   masked_api_key: string;
+  group_id: string;
+  group_name?: string;
   registered: boolean;
   has_explicit_policy: boolean;
   last_used_at?: string;
@@ -120,6 +124,16 @@ export interface ApiKeyRecordSummaryView {
 
 export interface ApiKeyRecordDetailView {
   summary: ApiKeyRecordSummaryView;
+  group?: {
+    id: string;
+    name: string;
+    daily_budget_usd: number;
+    weekly_budget_usd: number;
+    is_system: boolean;
+    member_count: number;
+    created_at: string;
+    updated_at: string;
+  };
   explicit_policy: ApiKeyPolicyView;
   effective_policy: ApiKeyPolicyView;
   today_report: ApiKeyUsageTotals;
