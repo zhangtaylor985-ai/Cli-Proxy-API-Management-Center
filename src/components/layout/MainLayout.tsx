@@ -19,6 +19,7 @@ import {
   IconInfo,
   IconKey,
   IconLayoutDashboard,
+  IconSatellite,
   IconScrollText,
   IconSettings,
   IconShield,
@@ -44,6 +45,7 @@ const sidebarIcons: Record<string, ReactNode> = {
   oauth: <IconShield size={18} />,
   quota: <IconTimer size={18} />,
   usage: <IconChartLine size={18} />,
+  sessionTrajectories: <IconSatellite size={18} />,
   config: <IconSettings size={18} />,
   key: <IconKey size={18} />,
   logs: <IconScrollText size={18} />,
@@ -359,6 +361,11 @@ export function MainLayout() {
     { path: '/oauth', label: t('nav.oauth', { defaultValue: 'OAuth' }), icon: sidebarIcons.oauth },
     { path: '/quota', label: t('nav.quota_management'), icon: sidebarIcons.quota },
     { path: '/usage', label: t('nav.usage_stats'), icon: sidebarIcons.usage },
+    {
+      path: '/session-trajectories',
+      label: t('nav.session_trajectories'),
+      icon: sidebarIcons.sessionTrajectories,
+    },
     ...(config?.loggingToFile
       ? [{ path: '/logs', label: t('nav.logs'), icon: sidebarIcons.logs }]
       : []),

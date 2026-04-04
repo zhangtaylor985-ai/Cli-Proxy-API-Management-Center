@@ -19,6 +19,7 @@ import { ConfigPage } from '@/pages/ConfigPage';
 import { APIKeysWorkbenchPage } from '@/pages/APIKeysWorkbenchPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { SystemPage } from '@/pages/SystemPage';
+import { SessionTrajectoriesPage } from '@/pages/SessionTrajectoriesPage';
 
 const mainRoutes = [
   { path: '/', element: <DashboardPage /> },
@@ -58,6 +59,7 @@ const mainRoutes = [
   { path: '/oauth', element: <OAuthPage /> },
   { path: '/quota', element: <QuotaPage /> },
   { path: '/usage', element: <UsagePage /> },
+  { path: '/session-trajectories', element: <SessionTrajectoriesPage /> },
   { path: '/config', element: <ConfigPage /> },
   { path: '/api-key-policies', element: <Navigate to="/api-keys" replace /> },
   { path: '/logs', element: <LogsPage /> },
