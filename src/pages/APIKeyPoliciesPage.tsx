@@ -2,7 +2,7 @@
  * API key policies management page.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -270,6 +270,39 @@ function sanitizeRoutingRules(raw: ModelRoutingRule[]): ModelRoutingRule[] {
   return out;
 }
 
+/** Build a JSON fingerprint from a policy object (same field order as formFingerprint). */
+function policyToFingerprint(p: ApiKeyPolicy): string {
+  const excluded = uniqStrings(p.excludedModels || []);
+  const limit = p.dailyLimits?.[OPUS_46_ID] ?? p.dailyLimits?.[OPUS_46_ID.toLowerCase()];
+  const upstream = String(p.upstreamBaseUrl ?? '').trim();
+  return JSON.stringify([
+    Boolean(p.fastMode),
+    Boolean(p.enableClaudeModels),
+    formatBudgetValue(Number(p.claudeUsageLimitUsd ?? 0)),
+    String(p.claudeGptTargetFamily ?? '').trim(),
+    Boolean(p.enableClaudeOpus1M),
+    p.allowClaudeOpus46 ?? true,
+    limit && Number.isFinite(limit) ? String(limit) : '',
+    Number(p.dailyBudgetUsd ?? 0) > 0,
+    formatBudgetValue(Number(p.dailyBudgetUsd ?? 0)),
+    Number(p.weeklyBudgetUsd ?? 0) > 0,
+    formatBudgetValue(Number(p.weeklyBudgetUsd ?? 0)),
+    normalizeHourInputValue(p.weeklyBudgetAnchorAt) || getCurrentHourInputValue(),
+    Number(p.tokenPackageUsd ?? 0) > 0,
+    formatBudgetValue(Number(p.tokenPackageUsd ?? 0)),
+    normalizeMinuteInputValue(p.tokenPackageStartedAt) || getCurrentMinuteInputValue(),
+    !hasManagedCategoryPattern(excluded, CLAUDE_CATEGORY_PATTERNS),
+    !hasManagedCategoryPattern(excluded, CHATGPT_CATEGORY_PATTERNS),
+    stripManagedCategoryPatterns(excluded),
+    Boolean(upstream),
+    upstream,
+    sanitizeRoutingRules(p.modelRoutingRules ?? []),
+    Boolean(p.claudeFailoverEnabled),
+    String(p.claudeFailoverTargetModel ?? '').trim() || DEFAULT_GPT54_TARGET,
+    sanitizeFailoverRules(p.claudeFailoverRules ?? []),
+  ]);
+}
+
 export function APIKeyPoliciesPage() {
   const { t } = useTranslation();
   const connectionStatus = useAuthStore((s) => s.connectionStatus);
@@ -281,6 +314,7 @@ export function APIKeyPoliciesPage() {
   const [policies, setPolicies] = useState<ApiKeyPolicy[]>([]);
   const [codexModels, setCodexModels] = useState<ModelDef[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [selectedKey, setSelectedKey] = useState('');
@@ -316,6 +350,33 @@ export function APIKeyPoliciesPage() {
   const [claudeFailoverEnabled, setClaudeFailoverEnabled] = useState(false);
   const [claudeFailoverTargetModel, setClaudeFailoverTargetModel] = useState(DEFAULT_GPT54_TARGET);
   const [claudeFailoverRules, setClaudeFailoverRules] = useState<ModelFailoverRule[]>([]);
+
+  // Snapshot of last-loaded form state for dirty detection
+  const loadedSnapshotRef = useRef('');
+
+  const formFingerprint = useMemo(() => {
+    return JSON.stringify([
+      fastMode, enableClaudeModels, claudeUsageLimitUsd, claudeGptTargetFamily,
+      enableClaudeOpus1M, allowOpus46, opus46DailyLimit,
+      dailyBudgetEnabled, dailyBudgetUsd,
+      weeklyBudgetEnabled, weeklyBudgetUsd, weeklyBudgetAnchorAt,
+      tokenPackageEnabled, tokenPackageUsd, tokenPackageStartedAt,
+      allowClaudeCategory, allowChatGPTCategory, excludedCustom,
+      upstreamProxyEnabled, upstreamBaseUrl,
+      modelRoutingRules, claudeFailoverEnabled, claudeFailoverTargetModel, claudeFailoverRules,
+    ]);
+  }, [
+    fastMode, enableClaudeModels, claudeUsageLimitUsd, claudeGptTargetFamily,
+    enableClaudeOpus1M, allowOpus46, opus46DailyLimit,
+    dailyBudgetEnabled, dailyBudgetUsd,
+    weeklyBudgetEnabled, weeklyBudgetUsd, weeklyBudgetAnchorAt,
+    tokenPackageEnabled, tokenPackageUsd, tokenPackageStartedAt,
+    allowClaudeCategory, allowChatGPTCategory, excludedCustom,
+    upstreamProxyEnabled, upstreamBaseUrl,
+    modelRoutingRules, claudeFailoverEnabled, claudeFailoverTargetModel, claudeFailoverRules,
+  ]);
+
+  const dirty = selectedKey !== '' && loadedSnapshotRef.current !== '' && formFingerprint !== loadedSnapshotRef.current;
 
   const upstreamBaseUrlTrimmed = upstreamBaseUrl.trim();
   const upstreamProxyActive = upstreamProxyEnabled && upstreamBaseUrlTrimmed !== '';
@@ -462,6 +523,8 @@ export function APIKeyPoliciesPage() {
     const upstream = String(p.upstreamBaseUrl ?? '').trim();
     setUpstreamBaseUrl(upstream);
     setUpstreamProxyEnabled(Boolean(upstream));
+
+    loadedSnapshotRef.current = policyToFingerprint(p);
   }, [policies, selectedKey]);
 
   useEffect(() => {
@@ -647,6 +710,7 @@ export function APIKeyPoliciesPage() {
   const handleSave = useCallback(async () => {
     const apiKey = selectedKey.trim();
     if (!apiKey) return;
+    setSaving(true);
 
     const upstreamValue = upstreamProxyEnabled ? upstreamBaseUrl.trim() : '';
     if (upstreamProxyEnabled && !upstreamValue) {
@@ -654,6 +718,7 @@ export function APIKeyPoliciesPage() {
         t('api_key_policies.upstream_proxy_missing', { defaultValue: '请填写上游 base-url' }),
         'error'
       );
+      setSaving(false);
       return;
     }
 
@@ -678,6 +743,7 @@ export function APIKeyPoliciesPage() {
         t('api_key_policies.daily_budget_invalid', { defaultValue: '请填写有效的每日额度（USD）' }),
         'error'
       );
+      setSaving(false);
       return;
     }
     if (enableClaudeModels && claudeUsageLimitUsd.trim() !== '' && parsedClaudeUsageLimitUsd == null) {
@@ -687,6 +753,7 @@ export function APIKeyPoliciesPage() {
         }),
         'error'
       );
+      setSaving(false);
       return;
     }
     if (weeklyBudgetEnabled && parsedWeeklyBudgetUsd == null) {
@@ -696,6 +763,7 @@ export function APIKeyPoliciesPage() {
         }),
         'error'
       );
+      setSaving(false);
       return;
     }
     if (weeklyBudgetEnabled && !parsedWeeklyBudgetAnchorAt) {
@@ -705,6 +773,7 @@ export function APIKeyPoliciesPage() {
         }),
         'error'
       );
+      setSaving(false);
       return;
     }
     if (tokenPackageEnabled && parsedTokenPackageUsd == null) {
@@ -714,6 +783,7 @@ export function APIKeyPoliciesPage() {
         }),
         'error'
       );
+      setSaving(false);
       return;
     }
     if (tokenPackageEnabled && !parsedTokenPackageStartedAt) {
@@ -723,6 +793,7 @@ export function APIKeyPoliciesPage() {
         }),
         'error'
       );
+      setSaving(false);
       return;
     }
 
@@ -773,6 +844,8 @@ export function APIKeyPoliciesPage() {
         `${t('notification.save_failed', { defaultValue: '保存失败' })}: ${message}`,
         'error'
       );
+    } finally {
+      setSaving(false);
     }
   }, [
     allowOpus46,
@@ -1677,10 +1750,24 @@ export function APIKeyPoliciesPage() {
           ) : null}
 
           <div className={styles.actions}>
-            <Button onClick={handleSave} disabled={disableControls || !selectedKey || loading}>
+            <Button
+              className={dirty ? styles.saveDirty : undefined}
+              onClick={handleSave}
+              disabled={disableControls || !selectedKey || loading || saving}
+              loading={saving}
+              title={
+                disableControls
+                  ? t('api_key_policies.save_hint_disconnected', { defaultValue: '请先连接服务器' })
+                  : !selectedKey
+                    ? t('api_key_policies.save_hint_no_key', { defaultValue: '请先选择一个 API 密钥' })
+                    : undefined
+              }
+            >
               <span className={styles.buttonContent}>
                 <IconCheck size={16} />
-                {t('common.save', { defaultValue: '保存' })}
+                {saving
+                  ? t('common.saving', { defaultValue: '保存中...' })
+                  : t('common.save', { defaultValue: '保存' })}
               </span>
             </Button>
             <Button variant="secondary" onClick={loadAll} disabled={disableControls || loading}>
@@ -1699,6 +1786,11 @@ export function APIKeyPoliciesPage() {
                 {t('common.delete', { defaultValue: '删除策略' })}
               </span>
             </Button>
+            {dirty && (
+              <span className={styles.dirtyHint}>
+                {t('api_key_policies.unsaved_changes', { defaultValue: '有未保存的更改' })}
+              </span>
+            )}
           </div>
         </Card>
 
