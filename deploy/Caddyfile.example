@@ -1,25 +1,25 @@
 :80 {
-    root * /var/www/cliproxy-ui/dist
-    encode gzip zstd
-    file_server
+	root * /var/www/cliproxy-ui/dist
+	encode gzip zstd
+	file_server
 
-    @index path / /index.html
-    header @index Cache-Control "no-store"
+	@index path / /index.html
+	header @index Cache-Control "no-store"
 
-    @html path *.html
-    header @html Cache-Control "public, max-age=300"
+	@html path *.html
+	header @html Cache-Control "public, max-age=300"
 }
 
 # Example with domain and automatic HTTPS:
 #
 # ui.example.com {
-#     root * /var/www/cliproxy-ui/dist
-#     encode gzip zstd
-#     file_server
+# 	root * /var/www/cliproxy-ui/dist
+# 	encode gzip zstd
+# 	file_server
 #
-#     @index path / /index.html
-#     header @index Cache-Control "no-store"
+# 	@index path / /index.html
+# 	header @index Cache-Control "no-store"
 #
-#     @html path *.html
-#     header @html Cache-Control "public, max-age=300"
+# 	@html path *.html
+# 	header @html Cache-Control "public, max-age=300"
 # }

@@ -47,6 +47,27 @@ npm run build
 
 Tip: opening `dist/index.html` via `file://` may be blocked by browser CORS; serving it (preview/static server) is more reliable.
 
+### Option D: Serve the production build with Caddy
+
+If you want to deploy this repo as a standalone frontend site, build it and let Caddy serve `dist/`:
+
+```bash
+npm install
+npm run build
+```
+
+Useful repo-local commands:
+
+```bash
+npm run check:caddy
+npm run serve:caddy
+```
+
+The bundled [Caddyfile](Caddyfile) serves `./dist` on `:5173`. For server deployment, see:
+
+- [docs/CADDY_DEPLOY_CN.md](docs/CADDY_DEPLOY_CN.md)
+- [deploy/Caddyfile.example](deploy/Caddyfile.example)
+
 ## Connecting to the server
 
 ### API address
@@ -141,6 +162,8 @@ The UI language is automatically detected from browser settings and can be manua
 npm run dev        # Vite dev server
 npm run build      # tsc + Vite build
 npm run preview    # serve dist locally
+npm run serve:caddy # serve dist with the bundled Caddyfile
+npm run check:caddy # validate the bundled Caddyfile
 npm run lint       # ESLint (fails on warnings)
 npm run format     # Prettier
 npm run type-check # tsc --noEmit

@@ -1,0 +1,15 @@
+{
+	admin off
+}
+
+:5173 {
+	root * ./dist
+	encode gzip zstd
+	file_server
+
+	@index path / /index.html
+	header @index Cache-Control "no-store"
+
+	@html path *.html
+	header @html Cache-Control "public, max-age=300"
+}

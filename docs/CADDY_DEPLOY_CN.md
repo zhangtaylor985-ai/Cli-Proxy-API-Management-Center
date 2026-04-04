@@ -14,6 +14,8 @@
 
 - 构建命令：`npm run build`
 - 产物路径：`dist/index.html`
+- 仓库内本地校验：`npm run check:caddy`
+- 仓库内本地启动：`npm run serve:caddy`
 
 这个产物可以直接由 Caddy 提供访问。
 
@@ -42,6 +44,7 @@ git clone <your-frontend-repo-url> cli-proxy-webui
 cd /opt/cli-proxy-webui
 npm ci
 npm run build
+npm run check:caddy
 ```
 
 ### 3. 写入 Caddy 配置
@@ -99,6 +102,39 @@ systemctl restart caddy
 systemctl status caddy --no-pager
 ```
 
+## 本机直接用仓库里的 Caddyfile
+
+如果你只是想在当前代码仓库里快速验证静态部署，不需要先复制到 `/etc/caddy/Caddyfile`：
+
+```bash
+npm ci
+npm run build
+npm run check:caddy
+npm run serve:caddy
+```
+
+默认监听地址：
+
+- `http://127.0.0.1:5173`
+- `http://<server-ip>:5173`
+
+仓库根目录下的 `Caddyfile` 默认读取 `./dist`。
+
+## Docker + Caddy 部署
+
+仓库现在也提供了一个多阶段 `Dockerfile`，构建后由 Caddy 提供静态文件：
+
+```bash
+docker build -t cliproxy-ui:caddy .
+docker run --rm -p 8080:80 cliproxy-ui:caddy
+```
+
+浏览器访问：
+
+- `http://127.0.0.1:8080`
+
+容器镜像内部使用的是 `deploy/Caddyfile.docker`，静态目录为 `/srv`。
+
 ### 5. 浏览器访问
 
 访问你的地址：
@@ -117,6 +153,8 @@ systemctl status caddy --no-pager
 
 当前端代码更新后，重复下面几步即可：
 
+如果你使用系统安装的 Caddy：
+
 ```bash
 cd /opt/cli-proxy-webui
 git pull
@@ -125,7 +163,17 @@ npm run build
 systemctl reload caddy
 ```
 
-如果只是静态文件变更，通常 `reload` 就够了；`restart` 也可以。
+如果你使用 Docker 镜像方式部署：
+
+```bash
+cd /opt/cli-proxy-webui
+git pull
+npm ci
+docker build -t cliproxy-ui:caddy .
+docker run --rm -p 8080:80 cliproxy-ui:caddy
+```
+
+如果只是静态文件变更，系统 Caddy 通常 `reload` 就够了；`restart` 也可以。
 
 ## systemd 管理 Caddy
 

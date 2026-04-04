@@ -63,6 +63,16 @@ npm run build
 - [docs/CADDY_DEPLOY_CN.md](docs/CADDY_DEPLOY_CN.md)
 - [deploy/Caddyfile.example](deploy/Caddyfile.example)
 
+仓库内也提供了本地快捷命令：
+
+```bash
+npm run build
+npm run check:caddy
+npm run serve:caddy
+```
+
+默认会使用仓库根目录下的 `Caddyfile`，把 `./dist` 作为静态站点目录并监听 `:5173`。
+
 ## 连接说明
 
 ### API 地址怎么填
@@ -156,6 +166,8 @@ npm run build
 npm run dev        # 启动开发服务器
 npm run build      # tsc + Vite 构建
 npm run preview    # 本地预览 dist
+npm run serve:caddy # 使用仓库内 Caddyfile 提供 dist
+npm run check:caddy # 校验 Caddyfile
 npm run lint       # ESLint（warnings 视为失败）
 npm run format     # Prettier
 npm run type-check # tsc --noEmit
