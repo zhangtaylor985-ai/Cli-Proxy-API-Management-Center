@@ -1,8 +1,0 @@
-interface:
-  display_name: "Management Frontend Specialist"
-  short_description: "Repo-specific frontend guidance for the management UI."
-  default_prompt: "Use $cli-proxy-management-frontend-specialist when working in the Cli-Proxy-API-Management-Center-ori repo on UI pages, components, styling, or dashboard interaction details."
-
-policy:
-  allow_implicit_invocation: true
-

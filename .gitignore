@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 api.md
 usage.json
+CLAUDE.md
 AGENTS.md
 management-api*
 antigravity_usage.json
@@ -19,13 +20,6 @@ dist
 dist-ssr
 *.local
 skills
-
-!.codex/
-!.codex/skills/
-!.codex/skills/cli-proxy-management-frontend-specialist/
-!.codex/skills/cli-proxy-management-frontend-specialist/**
-.codex/claude-runs/
-!CLAUDE.md
 
 # Editor directories and files
 settings.local.json
