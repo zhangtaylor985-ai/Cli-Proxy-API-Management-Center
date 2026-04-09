@@ -19,7 +19,7 @@ import {
   useThemeStore,
 } from '@/stores';
 import { configApi } from '@/services/api';
-import { apiKeysApi } from '@/services/api/apiKeys';
+import { apiKeyRecordsApi } from '@/services/api/apiKeyRecords';
 import { classifyModels } from '@/utils/models';
 import { STORAGE_KEY_AUTH } from '@/utils/constants';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
@@ -168,8 +168,8 @@ export function SystemPage() {
     }
 
     try {
-      const list = await apiKeysApi.list();
-      const normalized = normalizeApiKeyList(list);
+      const list = await apiKeyRecordsApi.list();
+      const normalized = normalizeApiKeyList(list.map((item) => item.api_key));
       if (normalized.length) {
         apiKeysCache.current = normalized;
       }

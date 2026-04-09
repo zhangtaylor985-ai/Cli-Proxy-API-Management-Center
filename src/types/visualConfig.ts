@@ -62,7 +62,6 @@ export type VisualConfigValues = {
   rmDisableControlPanel: boolean;
   rmPanelRepo: string;
   authDir: string;
-  apiKeysText: string;
   debug: boolean;
   commercialMode: boolean;
   loggingToFile: boolean;
@@ -101,7 +100,6 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   rmDisableControlPanel: false,
   rmPanelRepo: '',
   authDir: '',
-  apiKeysText: '',
   debug: false,
   commercialMode: false,
   loggingToFile: false,

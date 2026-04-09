@@ -24,7 +24,12 @@ import styles from './APIKeysWorkbenchPage.module.scss';
 
 type WorkbenchDraft = {
   apiKey: string;
+  createdAt: string;
+  expiresAt: string;
+  disabled: boolean;
   groupId: string;
+  allowClaudeFamily: boolean;
+  allowGptFamily: boolean;
   fastMode: boolean;
   enableClaudeModels: boolean;
   claudeUsageLimitUsd: string;
@@ -65,6 +70,13 @@ const FAMILY_OPTIONS = [
   { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
 ];
 
+const EXPIRY_PRESET_OPTIONS = [
+  { value: '1d', label: '1 日' },
+  { value: '1w', label: '1 周' },
+  { value: '1m', label: '1 月' },
+  { value: 'custom', label: '自定义' },
+];
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -88,10 +100,47 @@ function normalizeHourInputValue(raw: string): string {
   return getLocalHourInputValue(parsed);
 }
 
+function addExpiryPreset(preset: string): string {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  switch (preset) {
+    case '1d':
+      now.setDate(now.getDate() + 1);
+      break;
+    case '1w':
+      now.setDate(now.getDate() + 7);
+      break;
+    case '1m':
+    default:
+      now.setMonth(now.getMonth() + 1);
+      break;
+  }
+  return formatDateTimeLocal(now.toISOString());
+}
+
+function resolveExpiryPreset(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'custom';
+  const now = new Date();
+  const deltaMs = parsed.getTime() - now.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  if (Math.abs(deltaMs-dayMs) < 5 * 60 * 1000) return '1d';
+  if (Math.abs(deltaMs-7*dayMs) < 5 * 60 * 1000) return '1w';
+  const oneMonthLater = new Date(now);
+  oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+  if (Math.abs(parsed.getTime() - oneMonthLater.getTime()) < 5 * 60 * 1000) return '1m';
+  return 'custom';
+}
+
 function emptyDraft(): WorkbenchDraft {
   return {
     apiKey: '',
+    createdAt: '',
+    expiresAt: addExpiryPreset('1m'),
+    disabled: false,
     groupId: '',
+    allowClaudeFamily: true,
+    allowGptFamily: false,
     fastMode: false,
     enableClaudeModels: false,
     claudeUsageLimitUsd: '',
@@ -139,6 +188,13 @@ function formatDateTime(value?: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '暂无';
   return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function isExpired(value?: string): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() <= Date.now();
 }
 
 function formatDateTimeLocal(value?: string): string {
@@ -207,7 +263,12 @@ function parseJsonArray(source: string): Array<Record<string, unknown>> {
 function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): WorkbenchDraft {
   return {
     apiKey: policy.api_key || fallbackKey,
+    createdAt: policy.created_at || '',
+    expiresAt: formatDateTimeLocal(policy.expires_at) || addExpiryPreset('1m'),
+    disabled: Boolean(policy.disabled),
     groupId: policy.group_id || '',
+    allowClaudeFamily: policy.allow_claude_family !== false,
+    allowGptFamily: Boolean(policy.allow_gpt_family),
     fastMode: Boolean(policy.fast_mode),
     enableClaudeModels: Boolean(policy.enable_claude_models),
     claudeUsageLimitUsd: policy.claude_usage_limit_usd ? String(policy.claude_usage_limit_usd) : '',
@@ -232,7 +293,12 @@ function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): WorkbenchDraft 
 function toPolicyView(draft: WorkbenchDraft): ApiKeyPolicyView {
   return {
     api_key: draft.apiKey.trim(),
+    created_at: draft.createdAt.trim(),
+    expires_at: toIsoOrEmpty(draft.expiresAt),
+    disabled: draft.disabled,
     group_id: draft.groupId.trim(),
+    allow_claude_family: draft.allowClaudeFamily,
+    allow_gpt_family: draft.allowGptFamily,
     fast_mode: draft.fastMode,
     enable_claude_models: draft.enableClaudeModels,
     claude_usage_limit_usd: Number(draft.claudeUsageLimitUsd || 0),
@@ -381,6 +447,7 @@ export function APIKeysWorkbenchPage() {
     () => groups.find((item) => item.id === draft.groupId) ?? detail?.group ?? null,
     [detail?.group, draft.groupId, groups]
   );
+  const expiryPreset = useMemo(() => resolveExpiryPreset(draft.expiresAt), [draft.expiresAt]);
   const groupOptions = useMemo(
     () => [
       { value: '', label: '不绑定账户组' },
@@ -965,6 +1032,7 @@ export function APIKeysWorkbenchPage() {
                     item.weekly_budget.used_percent || 0
                   )
                 );
+                const expired = isExpired(item.expires_at);
                 return (
                   <button
                     type="button"
@@ -981,19 +1049,30 @@ export function APIKeysWorkbenchPage() {
                           {item.group_name ? ` · ${item.group_name}` : ''}
                         </div>
                       </div>
-                      <span className={`${styles.badge} ${styles[`badge${dailyTone}`]}`}>
-                        {formatPercent(
-                          Math.max(
-                            item.daily_budget.used_percent || 0,
-                            item.weekly_budget.used_percent || 0
-                          )
+                      <div className={styles.groupItemBadges}>
+                        {item.disabled && (
+                          <span className={`${styles.badge} ${styles.badgeDanger}`}>已禁用</span>
                         )}
-                      </span>
+                        {!item.disabled && expired && (
+                          <span className={`${styles.badge} ${styles.badgeDanger}`}>已过期</span>
+                        )}
+                        <span className={`${styles.badge} ${styles[`badge${dailyTone}`]}`}>
+                          {formatPercent(
+                            Math.max(
+                              item.daily_budget.used_percent || 0,
+                              item.weekly_budget.used_percent || 0
+                            )
+                          )}
+                        </span>
+                      </div>
                     </div>
                     <div className={styles.listMetrics}>
                       <span>{formatCost(item.today.cost_usd)} 今日</span>
                       <span>{formatCost(item.current_period.cost_usd)} 周期</span>
                       <span>{formatNumber(item.today.total_tokens)} tokens</span>
+                    </div>
+                    <div className={styles.listItemMeta}>
+                      创建于: {formatDateTime(item.created_at)} · 到期: {formatDateTime(item.expires_at)}
                     </div>
                     <div className={styles.listItemMeta}>
                       最近使用: {formatDateTime(item.last_used_at)}
@@ -1041,6 +1120,16 @@ export function APIKeysWorkbenchPage() {
                 <h3>{selectedSummary?.masked_api_key ?? draft.apiKey ?? '新 API Key'}</h3>
               </div>
               <div className={styles.editorLeadMeta}>
+                <span>创建时间：{formatDateTime(selectedSummary?.created_at || draft.createdAt)}</span>
+                <span>过期时间：{formatDateTime(selectedSummary?.expires_at || draft.expiresAt)}</span>
+                <span>
+                  状态：
+                  {draft.disabled
+                    ? '已禁用'
+                    : isExpired(selectedSummary?.expires_at || draft.expiresAt)
+                      ? '已过期'
+                      : '可用'}
+                </span>
                 <span>账户组：{activeGroup?.name ?? '未绑定'}</span>
                 <span>最近使用：{formatDateTime(selectedSummary?.last_used_at)}</span>
               </div>
@@ -1102,6 +1191,12 @@ export function APIKeysWorkbenchPage() {
                     onChange={(event) => updateDraft('apiKey', event.target.value)}
                     placeholder="输入 API Key"
                   />
+                  <Input
+                    label="创建时间"
+                    value={formatDateTime(draft.createdAt)}
+                    disabled
+                    hint="创建后由后端写入，当前字段只读。"
+                  />
                   <div className="form-group">
                     <label>账户组</label>
                     <Select
@@ -1121,6 +1216,51 @@ export function APIKeysWorkbenchPage() {
                     onChange={(event) => updateDraft('upstreamBaseUrl', event.target.value)}
                     placeholder="可选"
                   />
+                  <div className="form-group">
+                    <label>过期时间</label>
+                    <Select
+                      value={expiryPreset}
+                      options={EXPIRY_PRESET_OPTIONS}
+                      onChange={(value) => {
+                        if (value === 'custom') return;
+                        updateDraft('expiresAt', addExpiryPreset(value));
+                      }}
+                    />
+                    <div className="hint">新增 API Key 默认有效期 1 个月。</div>
+                  </div>
+                  <Input
+                    label="自定义过期时间"
+                    type="datetime-local"
+                    value={draft.expiresAt}
+                    onChange={(event) => updateDraft('expiresAt', event.target.value)}
+                    hint="可直接选择具体过期日期时间。留空表示不过期。"
+                  />
+                </div>
+                <div className={styles.toggleGrid}>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={!draft.disabled}
+                      onChange={(value) => updateDraft('disabled', !value)}
+                      label="Key 启用"
+                    />
+                    <p>关闭后该 API Key 会立即停止服务，但仍保留在工作台中。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.allowClaudeFamily}
+                      onChange={(value) => updateDraft('allowClaudeFamily', value)}
+                      label="允许 Claude 系模型"
+                    />
+                    <p>控制客户端请求的 `claude-*` 模型族是否可用。</p>
+                  </div>
+                  <div className={styles.toggleCard}>
+                    <ToggleSwitch
+                      checked={draft.allowGptFamily}
+                      onChange={(value) => updateDraft('allowGptFamily', value)}
+                      label="允许 GPT 系模型"
+                    />
+                    <p>控制客户端请求的 `gpt-* / chatgpt-* / o1/o3/o4` 模型族是否可用。</p>
+                  </div>
                 </div>
               </section>
 
@@ -1296,14 +1436,6 @@ export function APIKeysWorkbenchPage() {
                     />
                   </label>
                   <label className={styles.textAreaField}>
-                    <span>禁止模型</span>
-                    <textarea
-                      value={draft.excludedModels}
-                      onChange={(event) => updateDraft('excludedModels', event.target.value)}
-                      placeholder={'gpt-5.5*\nclaude-opus-4-6*'}
-                    />
-                  </label>
-                  <label className={styles.textAreaField}>
                     <span>Model Routing Rules JSON</span>
                     <textarea
                       value={draft.modelRoutingRules}
@@ -1318,6 +1450,15 @@ export function APIKeysWorkbenchPage() {
                     />
                   </label>
                 </div>
+                {draft.excludedModels.trim() && (
+                  <div className={styles.groupBindingNote}>
+                    <strong>存在额外禁止模型规则</strong>
+                    <span>
+                      当前记录里还有 {listFromLines(draft.excludedModels).length}
+                      条额外禁止模型规则，页面会自动保留并随保存一起回写。
+                    </span>
+                  </div>
+                )}
               </section>
             </div>
           </Card>

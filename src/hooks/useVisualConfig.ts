@@ -16,54 +16,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function extractApiKeyValue(raw: unknown): string | null {
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    return trimmed ? trimmed : null;
-  }
-
-  const record = asRecord(raw);
-  if (!record) return null;
-
-  const candidates = [record['api-key'], record.apiKey, record.key, record.Key];
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim();
-      if (trimmed) return trimmed;
-    }
-  }
-
-  return null;
-}
-
-function parseApiKeysText(raw: unknown): string {
-  if (!Array.isArray(raw)) return '';
-
-  const keys: string[] = [];
-  for (const item of raw) {
-    const key = extractApiKeyValue(item);
-    if (key) keys.push(key);
-  }
-  return keys.join('\n');
-}
-
-function resolveApiKeysText(parsed: Record<string, unknown>): string {
-  if (Object.prototype.hasOwnProperty.call(parsed, 'api-keys')) {
-    return parseApiKeysText(parsed['api-keys']);
-  }
-
-  const auth = asRecord(parsed.auth);
-  const providers = asRecord(auth?.providers);
-  const configApiKeyProvider = asRecord(providers?.['config-api-key']);
-  if (!configApiKeyProvider) return '';
-
-  if (Object.prototype.hasOwnProperty.call(configApiKeyProvider, 'api-key-entries')) {
-    return parseApiKeysText(configApiKeyProvider['api-key-entries']);
-  }
-
-  return parseApiKeysText(configApiKeyProvider['api-keys']);
-}
-
 type YamlDocument = ReturnType<typeof parseDocument>;
 type YamlPath = string[];
 
@@ -493,7 +445,6 @@ export function useVisualConfig() {
             : '',
 
         authDir: typeof parsed['auth-dir'] === 'string' ? parsed['auth-dir'] : '',
-        apiKeysText: resolveApiKeysText(parsed),
 
         debug: Boolean(parsed.debug),
         commercialMode: Boolean(parsed['commercial-mode']),
@@ -589,13 +540,7 @@ export function useVisualConfig() {
         }
 
         setStringInDoc(doc, ['auth-dir'], values.authDir);
-        const apiKeys = values.apiKeysText
-          .split('\n')
-          .map((key) => key.trim())
-          .filter(Boolean);
-        if (apiKeys.length > 0) {
-          doc.setIn(['api-keys'], apiKeys);
-        } else if (docHas(doc, ['api-keys'])) {
+        if (docHas(doc, ['api-keys'])) {
           doc.deleteIn(['api-keys']);
         }
         deleteLegacyApiKeysProvider(doc);

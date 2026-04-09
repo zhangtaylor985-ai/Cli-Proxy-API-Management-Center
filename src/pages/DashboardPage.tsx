@@ -8,7 +8,7 @@ import {
   IconSatellite
 } from '@/components/ui/icons';
 import { useAuthStore, useConfigStore, useModelsStore } from '@/stores';
-import { apiKeysApi, providersApi, authFilesApi } from '@/services/api';
+import { apiKeyRecordsApi, providersApi, authFilesApi } from '@/services/api';
 import styles from './DashboardPage.module.scss';
 
 interface QuickStat {
@@ -99,8 +99,8 @@ export function DashboardPage() {
     }
 
     try {
-      const list = await apiKeysApi.list();
-      const normalized = normalizeApiKeyList(list);
+      const list = await apiKeyRecordsApi.list();
+      const normalized = normalizeApiKeyList(list.map((item) => item.api_key));
       if (normalized.length) {
         apiKeysCache.current = normalized;
       }
@@ -128,14 +128,15 @@ export function DashboardPage() {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [keysRes, filesRes, geminiRes, codexRes, claudeRes, openaiRes] = await Promise.allSettled([
-          apiKeysApi.list(),
-          authFilesApi.list(),
-          providersApi.getGeminiKeys(),
-          providersApi.getCodexConfigs(),
-          providersApi.getClaudeConfigs(),
-          providersApi.getOpenAIProviders()
-        ]);
+        const [keysRes, filesRes, geminiRes, codexRes, claudeRes, openaiRes] =
+          await Promise.allSettled([
+            apiKeyRecordsApi.list(),
+            authFilesApi.list(),
+            providersApi.getGeminiKeys(),
+            providersApi.getCodexConfigs(),
+            providersApi.getClaudeConfigs(),
+            providersApi.getOpenAIProviders(),
+          ]);
 
         setStats({
           apiKeys: keysRes.status === 'fulfilled' ? keysRes.value.length : null,
@@ -184,9 +185,9 @@ export function DashboardPage() {
       label: t('dashboard.management_keys'),
       value: stats.apiKeys ?? '-',
       icon: <IconKey size={24} />,
-      path: '/config',
+      path: '/api-keys',
       loading: loading && stats.apiKeys === null,
-      sublabel: t('nav.config_management')
+      sublabel: t('nav.api_keys')
     },
     {
       label: t('nav.ai_providers'),

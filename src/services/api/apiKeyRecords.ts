@@ -81,8 +81,13 @@ export interface ApiKeyEventView {
 
 export interface ApiKeyPolicyView {
   api_key: string;
+  created_at: string;
+  expires_at: string;
+  disabled: boolean;
   group_id: string;
   group_name?: string;
+  allow_claude_family: boolean;
+  allow_gpt_family: boolean;
   fast_mode: boolean;
   enable_claude_models: boolean;
   claude_usage_limit_usd: number;
@@ -106,6 +111,9 @@ export interface ApiKeyPolicyView {
 export interface ApiKeyRecordSummaryView {
   api_key: string;
   masked_api_key: string;
+  created_at: string;
+  expires_at: string;
+  disabled: boolean;
   group_id: string;
   group_name?: string;
   registered: boolean;

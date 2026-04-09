@@ -2,8 +2,6 @@ export * from './client';
 export * from './apiCall';
 export * from './config';
 export * from './configFile';
-export * from './apiKeys';
-export * from './apiKeyPolicies';
 export * from './apiKeyRecords';
 export * from './ampcode';
 export * from './providers';
