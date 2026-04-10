@@ -60,6 +60,7 @@ const serializeProviderKey = (config: ProviderKeyConfig) => {
   const payload: Record<string, unknown> = { 'api-key': config.apiKey };
   if (config.priority !== undefined) payload.priority = config.priority;
   if (config.fastRecovery !== undefined) payload['fast-recovery'] = config.fastRecovery;
+  if (config.fastMode !== undefined) payload['fast-mode'] = config.fastMode;
   if (config.opusBaseOnly !== undefined) payload['opus-base-only'] = config.opusBaseOnly;
   if (config.prefix?.trim()) payload.prefix = config.prefix.trim();
   if (config.baseUrl) payload['base-url'] = config.baseUrl;
