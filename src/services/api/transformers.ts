@@ -337,7 +337,9 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
   config.claudeToGptRoutingEnabled = normalizeBoolean(
     raw['claude-to-gpt-routing-enabled'] ?? raw.claudeToGptRoutingEnabled
   );
-  config.claudeStyleEnabled = normalizeBoolean(raw['claude-style-enabled'] ?? raw.claudeStyleEnabled);
+  config.claudeStyleEnabled = normalizeBoolean(
+    raw['claude-style-enabled'] ?? raw.claudeStyleEnabled
+  );
   const claudeStylePrompt = raw['claude-style-prompt'] ?? raw.claudeStylePrompt;
   config.claudeStylePrompt =
     typeof claudeStylePrompt === 'string'
@@ -354,6 +356,9 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
         : String(claudeToGptTargetFamily);
   config.disableClaudeOpus1M = normalizeBoolean(
     raw['disable-claude-opus-1m'] ?? raw.disableClaudeOpus1M
+  );
+  config.claudeCodeOnlyEnabled = normalizeBoolean(
+    raw['claude-code-only-enabled'] ?? raw.claudeCodeOnlyEnabled
   );
 
   const anthropicBaseUrl = raw['anthropic-base-url'] ?? raw.anthropicBaseUrl;

@@ -1186,7 +1186,11 @@
     "clear_login_title": "本地登录信息",
     "clear_login_desc": "清理本地保存的登录信息并退出登录，不会影响使用统计中的价格设置。",
     "clear_login_button": "清理登录信息",
-    "clear_login_confirm": "确认清理本地登录信息并退出登录？"
+    "clear_login_confirm": "确认清理本地登录信息并退出登录？",
+    "claude_code_only_title": "默认仅允许 Claude Code",
+    "claude_code_only_desc": "开启后，客户端 API Key 默认只允许带 Claude Code 指纹的请求访问；其他直接走 API 的客户端会被拒绝。单个 API Key 可在策略页单独覆盖。",
+    "claude_code_only_toggle": "启用全局 Claude Code 限制",
+    "claude_code_only_hint": "单个 API Key 可选择继承全局、强制仅允许 Claude Code，或关闭该限制，适合给特定 key 放行或单独加严。"
   },
   "notification": {
     "debug_updated": "调试设置已更新",
@@ -1199,6 +1203,7 @@
     "logging_to_file_updated": "日志记录设置已更新",
     "logs_max_total_size_updated": "日志容量设置已更新",
     "request_log_updated": "请求日志设置已更新",
+    "claude_code_only_updated": "Claude Code 客户端限制已更新",
     "force_model_prefix_updated": "模型前缀设置已更新",
     "ws_auth_updated": "WebSocket 鉴权设置已更新",
     "routing_strategy_updated": "路由策略已更新",

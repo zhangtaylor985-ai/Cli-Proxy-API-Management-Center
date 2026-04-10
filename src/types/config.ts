@@ -19,6 +19,7 @@ export interface Config {
   claudeStylePrompt?: string;
   claudeToGptTargetFamily?: string;
   disableClaudeOpus1M?: boolean;
+  claudeCodeOnlyEnabled?: boolean;
   anthropicBaseUrl?: string;
   anthropicOAuthTokenUrl?: string;
   requestRetry?: number;
@@ -49,6 +50,7 @@ export type RawConfigSection =
   | 'claude-style-prompt'
   | 'claude-to-gpt-target-family'
   | 'disable-claude-opus-1m'
+  | 'claude-code-only-enabled'
   | 'anthropic-base-url'
   | 'anthropic-oauth-token-url'
   | 'request-retry'

@@ -86,6 +86,7 @@ export function SystemPage() {
   const [claudeStylePromptDraft, setClaudeStylePromptDraft] = useState('');
   const [claudeRoutingTargetSaving, setClaudeRoutingTargetSaving] = useState(false);
   const [claudeOpus1MSaving, setClaudeOpus1MSaving] = useState(false);
+  const [claudeCodeOnlySaving, setClaudeCodeOnlySaving] = useState(false);
 
   const apiKeysCache = useRef<string[]>([]);
   const versionTapCount = useRef(0);
@@ -104,6 +105,7 @@ export function SystemPage() {
   const effectiveClaudeToGptTargetFamily =
     claudeToGptTargetFamily || EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY;
   const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
+  const claudeCodeOnlyEnabled = config?.claudeCodeOnlyEnabled ?? true;
   const requestLogDirty = requestLogDraft !== requestLogEnabled;
   const claudeStylePromptDirty = claudeStylePromptDraft !== claudeStylePrompt;
   const canEditRequestLog = auth.connectionStatus === 'connected' && Boolean(config);
@@ -117,6 +119,8 @@ export function SystemPage() {
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingTargetSaving;
   const canEditClaudeOpus1M =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeOpus1MSaving;
+  const canEditClaudeCodeOnly =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeCodeOnlySaving;
 
   const appVersion = __APP_VERSION__ || t('system_info.version_unknown');
   const apiVersion = auth.serverVersion || t('system_info.version_unknown');
@@ -168,8 +172,8 @@ export function SystemPage() {
     }
 
     try {
-      const list = await apiKeyRecordsApi.list();
-      const normalized = normalizeApiKeyList(list.map((item) => item.api_key));
+      const list = await apiKeyRecordsApi.list({ page: 1, pageSize: 100 });
+      const normalized = normalizeApiKeyList(list.items.map((item) => item.api_key));
       if (normalized.length) {
         apiKeysCache.current = normalized;
       }
@@ -378,6 +382,35 @@ export function SystemPage() {
       );
     } finally {
       setClaudeOpus1MSaving(false);
+    }
+  };
+
+  const handleClaudeCodeOnlyToggle = async (enabled: boolean) => {
+    if (!config) return;
+
+    const previous = claudeCodeOnlyEnabled;
+    setClaudeCodeOnlySaving(true);
+    updateConfigValue('claude-code-only-enabled', enabled);
+
+    try {
+      await configApi.updateClaudeCodeOnlyEnabled(enabled);
+      clearCache('claude-code-only-enabled');
+      showNotification(
+        t('notification.claude_code_only_updated', {
+          defaultValue: 'Claude Code 客户端限制已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-code-only-enabled', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeCodeOnlySaving(false);
     }
   };
 
@@ -731,6 +764,36 @@ export function SystemPage() {
             {t('system_info.disable_claude_opus_1m_hint', {
               defaultValue:
                 '如需让某个 API Key 继续使用 Opus 1M，请到“API Key 策略”页面为该 Key 打开“允许 Opus 1M（覆盖全局）”。',
+            })}
+          </div>
+        </Card>
+
+        <Card
+          title={t('system_info.claude_code_only_title', {
+            defaultValue: '默认仅允许 Claude Code',
+          })}
+        >
+          <p className={styles.sectionDescription}>
+            {t('system_info.claude_code_only_desc', {
+              defaultValue:
+                '开启后，客户端 API Key 默认只允许带 Claude Code 指纹的请求访问；其他直接走 API 的客户端会被拒绝。单个 API Key 可在策略页单独覆盖。',
+            })}
+          </p>
+          <ToggleSwitch
+            label={t('system_info.claude_code_only_toggle', {
+              defaultValue: '启用全局 Claude Code 限制',
+            })}
+            labelPosition="left"
+            checked={claudeCodeOnlyEnabled}
+            disabled={!canEditClaudeCodeOnly}
+            onChange={(value) => {
+              void handleClaudeCodeOnlyToggle(value);
+            }}
+          />
+          <div className="hint">
+            {t('system_info.claude_code_only_hint', {
+              defaultValue:
+                '单个 API Key 可选择继承全局、强制仅允许 Claude Code，或关闭该限制，适合给特定 key 放行或单独加严。',
             })}
           </div>
         </Card>

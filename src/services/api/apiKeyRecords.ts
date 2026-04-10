@@ -93,6 +93,7 @@ export interface ApiKeyPolicyView {
   claude_usage_limit_usd: number;
   claude_gpt_target_family: string;
   enable_claude_opus_1m: boolean;
+  claude_code_only_mode: 'inherit' | 'enabled' | 'disabled';
   upstream_base_url: string;
   excluded_models: string[];
   allow_claude_opus_46: boolean;
@@ -108,6 +109,26 @@ export interface ApiKeyPolicyView {
   claude_failover_rules: Array<Record<string, unknown>>;
 }
 
+export interface ApiKeyRecordSummaryLiteView {
+  api_key: string;
+  masked_api_key: string;
+  created_at: string;
+  expires_at: string;
+  disabled: boolean;
+  group_id: string;
+  group_name?: string;
+  registered: boolean;
+  has_explicit_policy: boolean;
+  last_used_at?: string;
+  daily_limit_count: number;
+  policy_family: string;
+  enable_claude_models: boolean;
+  fast_mode: boolean;
+  expired: boolean;
+}
+
+// ApiKeyRecordSummaryView is the full summary returned inside the single-key
+// detail endpoint. The list endpoint now returns the lite variant above.
 export interface ApiKeyRecordSummaryView {
   api_key: string;
   masked_api_key: string;
@@ -128,6 +149,41 @@ export interface ApiKeyRecordSummaryView {
   policy_family: string;
   enable_claude_models: boolean;
   fast_mode: boolean;
+}
+
+export interface ApiKeyRecordListPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface ApiKeyRecordListResponse {
+  items: ApiKeyRecordSummaryLiteView[];
+  pagination: ApiKeyRecordListPagination;
+}
+
+export interface ApiKeyRecordListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: 'all' | 'active' | 'disabled' | 'expired';
+  groupId?: string;
+  sort?: 'last_used' | 'created' | 'expires' | 'api_key';
+  order?: 'asc' | 'desc';
+}
+
+export interface ApiKeyRecordStatsItem {
+  api_key: string;
+  today: ApiKeyUsageTotals;
+  current_period: ApiKeyUsageTotals;
+  daily_budget: ApiKeyBudgetWindowView;
+  weekly_budget: ApiKeyBudgetWindowView;
+  token_package: ApiKeyTokenPackageView;
+}
+
+export interface ApiKeyRecordStatsResponse {
+  items: ApiKeyRecordStatsItem[];
 }
 
 export interface ApiKeyRecordDetailView {
@@ -166,16 +222,32 @@ export interface ApiKeyInsightsQueryResult {
 const API_KEY_QUERY_TIMEOUT_MS = 20_000;
 
 export const apiKeyRecordsApi = {
-  async list(range = '14d', search = ''): Promise<ApiKeyRecordSummaryView[]> {
+  async list(params: ApiKeyRecordListParams = {}): Promise<ApiKeyRecordListResponse> {
     const query = new URLSearchParams();
-    query.set('range', range);
-    if (search.trim()) {
-      query.set('search', search.trim());
-    }
-    const response = await apiClient.get<{ items?: ApiKeyRecordSummaryView[] }>(
-      `/api-key-records?${query.toString()}`
-    );
-    return Array.isArray(response.items) ? response.items : [];
+    if (params.page && params.page > 0) query.set('page', String(params.page));
+    if (params.pageSize && params.pageSize > 0) query.set('page_size', String(params.pageSize));
+    if (params.search && params.search.trim()) query.set('search', params.search.trim());
+    if (params.status && params.status !== 'all') query.set('status', params.status);
+    if (params.groupId && params.groupId.trim()) query.set('group_id', params.groupId.trim());
+    if (params.sort) query.set('sort', params.sort);
+    if (params.order) query.set('order', params.order);
+    const suffix = query.toString();
+    const url = suffix ? `/api-key-records?${suffix}` : '/api-key-records';
+    const response = await apiClient.get<ApiKeyRecordListResponse>(url);
+    return {
+      items: Array.isArray(response?.items) ? response.items : [],
+      pagination: response?.pagination ?? { page: 1, page_size: 0, total: 0, total_pages: 0 },
+    };
+  },
+
+  async stats(apiKeys: string[], range = '14d'): Promise<ApiKeyRecordStatsItem[]> {
+    const unique = Array.from(new Set(apiKeys.map((key) => key.trim()).filter(Boolean)));
+    if (unique.length === 0) return [];
+    const response = await apiClient.post<ApiKeyRecordStatsResponse>('/api-key-records/stats', {
+      api_keys: unique,
+      range,
+    });
+    return Array.isArray(response?.items) ? response.items : [];
   },
 
   async get(apiKey: string, range = '14d', eventsLimit = 100): Promise<ApiKeyRecordDetailView> {

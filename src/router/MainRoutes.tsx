@@ -18,7 +18,9 @@ import { OAuthPage } from '@/pages/OAuthPage';
 import { QuotaPage } from '@/pages/QuotaPage';
 import { UsagePage } from '@/pages/UsagePage';
 import { ConfigPage } from '@/pages/ConfigPage';
-import { APIKeysWorkbenchPage } from '@/pages/APIKeysWorkbenchPage';
+import { APIKeysListPage } from '@/pages/APIKeysListPage';
+import { APIKeyEditPage } from '@/pages/APIKeyEditPage';
+import { APIKeyGroupsPage } from '@/pages/APIKeyGroupsPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { SystemPage } from '@/pages/SystemPage';
 import { SessionTrajectoriesPage } from '@/pages/SessionTrajectoriesPage';
@@ -27,7 +29,10 @@ const mainRoutes = [
   { path: '/', element: <DashboardPage /> },
   { path: '/dashboard', element: <DashboardPage /> },
   { path: '/settings', element: <Navigate to="/config" replace /> },
-  { path: '/api-keys', element: <APIKeysWorkbenchPage /> },
+  { path: '/api-keys', element: <APIKeysListPage /> },
+  { path: '/api-keys/new', element: <APIKeyEditPage /> },
+  { path: '/api-keys/groups', element: <APIKeyGroupsPage /> },
+  { path: '/api-keys/:apiKey', element: <APIKeyEditPage /> },
   { path: '/ai-providers/gemini/new', element: <AiProvidersGeminiEditPage /> },
   { path: '/ai-providers/gemini/:index', element: <AiProvidersGeminiEditPage /> },
   { path: '/ai-providers/codex/new', element: <AiProvidersCodexEditPage /> },

@@ -66,6 +66,12 @@ export const configApi = {
     apiClient.put('/disable-claude-opus-1m', { value: enabled }),
 
   /**
+   * 默认仅允许 Claude Code 客户端
+   */
+  updateClaudeCodeOnlyEnabled: (enabled: boolean) =>
+    apiClient.put('/claude-code-only-enabled', { value: enabled }),
+
+  /**
    * 更新重试次数
    */
   updateRequestRetry: (retryCount: number) =>

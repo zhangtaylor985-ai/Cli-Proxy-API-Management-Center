@@ -1186,7 +1186,11 @@
     "clear_login_title": "Local Login Data",
     "clear_login_desc": "Clear locally saved login data and sign out. Usage stats pricing settings will remain untouched.",
     "clear_login_button": "Clear login data",
-    "clear_login_confirm": "Clear local login data and sign out now?"
+    "clear_login_confirm": "Clear local login data and sign out now?",
+    "claude_code_only_title": "Claude Code Only by Default",
+    "claude_code_only_desc": "When enabled, client API keys only accept requests that match the Claude Code fingerprint by default. Other direct API clients are rejected unless the API key overrides this policy.",
+    "claude_code_only_toggle": "Enable global Claude Code restriction",
+    "claude_code_only_hint": "Each API key can inherit the global rule, force Claude Code only, or disable the restriction for that key."
   },
   "notification": {
     "debug_updated": "Debug settings updated",
@@ -1199,6 +1203,7 @@
     "logging_to_file_updated": "Logging settings updated",
     "logs_max_total_size_updated": "Log size limit updated",
     "request_log_updated": "Request logging setting updated",
+    "claude_code_only_updated": "Claude Code client restriction updated",
     "force_model_prefix_updated": "Model prefix setting updated",
     "ws_auth_updated": "WebSocket authentication setting updated",
     "routing_strategy_updated": "Routing strategy updated",
