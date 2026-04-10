@@ -182,6 +182,7 @@ export function MainLayout() {
 
   const apiBase = useAuthStore((state) => state.apiBase);
   const serverVersion = useAuthStore((state) => state.serverVersion);
+  const role = useAuthStore((state) => state.role);
   const connectionStatus = useAuthStore((state) => state.connectionStatus);
   const logout = useAuthStore((state) => state.logout);
 
@@ -207,6 +208,7 @@ export function MainLayout() {
   const fullBrandName = 'CLI Proxy API Management Center';
   const abbrBrandName = t('title.abbr');
   const isLogsPage = location.pathname.startsWith('/logs');
+  const isStaff = role === 'staff';
 
   // 将顶栏高度写入 CSS 变量，确保侧栏/内容区计算一致，防止滚动时抖动
   useLayoutEffect(() => {
@@ -337,10 +339,13 @@ export function MainLayout() {
   );
 
   useEffect(() => {
+    if (isStaff) {
+      return;
+    }
     fetchConfig().catch(() => {
       // ignore initial failure; login flow会提示
     });
-  }, [fetchConfig]);
+  }, [fetchConfig, isStaff]);
 
 
   const statusClass =
@@ -352,25 +357,31 @@ export function MainLayout() {
           ? 'error'
           : 'muted';
 
-  const navItems = [
-    { path: '/', label: t('nav.dashboard'), icon: sidebarIcons.dashboard },
-    { path: '/config', label: t('nav.config_management'), icon: sidebarIcons.config },
-    { path: '/api-keys', label: t('nav.api_keys'), icon: sidebarIcons.key },
-    { path: '/ai-providers', label: t('nav.ai_providers'), icon: sidebarIcons.aiProviders },
-    { path: '/auth-files', label: t('nav.auth_files'), icon: sidebarIcons.authFiles },
-    { path: '/oauth', label: t('nav.oauth', { defaultValue: 'OAuth' }), icon: sidebarIcons.oauth },
-    { path: '/quota', label: t('nav.quota_management'), icon: sidebarIcons.quota },
-    { path: '/usage', label: t('nav.usage_stats'), icon: sidebarIcons.usage },
-    {
-      path: '/session-trajectories',
-      label: t('nav.session_trajectories'),
-      icon: sidebarIcons.sessionTrajectories,
-    },
-    ...(config?.loggingToFile
-      ? [{ path: '/logs', label: t('nav.logs'), icon: sidebarIcons.logs }]
-      : []),
-    { path: '/system', label: t('nav.system_info'), icon: sidebarIcons.system },
-  ];
+  const navItems = isStaff
+    ? [{ path: '/api-keys', label: t('nav.api_keys'), icon: sidebarIcons.key }]
+    : [
+        { path: '/', label: t('nav.dashboard'), icon: sidebarIcons.dashboard },
+        { path: '/config', label: t('nav.config_management'), icon: sidebarIcons.config },
+        { path: '/api-keys', label: t('nav.api_keys'), icon: sidebarIcons.key },
+        { path: '/ai-providers', label: t('nav.ai_providers'), icon: sidebarIcons.aiProviders },
+        { path: '/auth-files', label: t('nav.auth_files'), icon: sidebarIcons.authFiles },
+        {
+          path: '/oauth',
+          label: t('nav.oauth', { defaultValue: 'OAuth' }),
+          icon: sidebarIcons.oauth,
+        },
+        { path: '/quota', label: t('nav.quota_management'), icon: sidebarIcons.quota },
+        { path: '/usage', label: t('nav.usage_stats'), icon: sidebarIcons.usage },
+        {
+          path: '/session-trajectories',
+          label: t('nav.session_trajectories'),
+          icon: sidebarIcons.sessionTrajectories,
+        },
+        ...(config?.loggingToFile
+          ? [{ path: '/logs', label: t('nav.logs'), icon: sidebarIcons.logs }]
+          : []),
+        { path: '/system', label: t('nav.system_info'), icon: sidebarIcons.system },
+      ];
   const navOrder = navItems.map((item) => item.path);
   const getRouteOrder = (pathname: string) => {
     const trimmedPath =
@@ -428,6 +439,9 @@ export function MainLayout() {
   }, []);
 
   const handleRefreshAll = async () => {
+    if (isStaff) {
+      return;
+    }
     clearCache();
     const results = await Promise.allSettled([
       fetchConfig(undefined, true),
@@ -529,23 +543,27 @@ export function MainLayout() {
             >
               {headerIcons.menu}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshAll}
-              title={t('header.refresh_all')}
-            >
-              {headerIcons.refresh}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleVersionCheck}
-              loading={checkingVersion}
-              title={t('system_info.version_check_button')}
-            >
-              {headerIcons.update}
-            </Button>
+            {!isStaff && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshAll}
+                  title={t('header.refresh_all')}
+                >
+                  {headerIcons.refresh}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleVersionCheck}
+                  loading={checkingVersion}
+                  title={t('system_info.version_check_button')}
+                >
+                  {headerIcons.update}
+                </Button>
+              </>
+            )}
             <div className={`language-menu ${languageMenuOpen ? 'open' : ''}`} ref={languageMenuRef}>
               <Button
                 variant="ghost"

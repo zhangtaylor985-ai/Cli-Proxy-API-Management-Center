@@ -6,15 +6,20 @@
 // 登录凭据
 export interface LoginCredentials {
   apiBase: string;
-  managementKey: string;
+  username: string;
+  password: string;
   rememberPassword?: boolean;
 }
+
+export type ManagementRole = 'admin' | 'staff';
 
 // 认证状态
 export interface AuthState {
   isAuthenticated: boolean;
   apiBase: string;
   managementKey: string;
+  username: string;
+  role: ManagementRole | null;
   rememberPassword: boolean;
   serverVersion: string | null;
   serverBuildDate: string | null;
@@ -27,4 +32,17 @@ export interface ConnectionInfo {
   status: ConnectionStatus;
   lastCheck: Date | null;
   error: string | null;
+}
+
+export interface ManagementLoginResponse {
+  token: string;
+  username: string;
+  role: ManagementRole;
+  expires_at: string;
+}
+
+export interface ManagementMeResponse {
+  username: string;
+  role: ManagementRole;
+  auth_source: string;
 }

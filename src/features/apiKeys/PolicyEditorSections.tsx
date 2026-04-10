@@ -5,6 +5,7 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import type { ApiKeyGroupView } from '@/services/api/apiKeyGroups';
 import {
   CLAUDE_CODE_ONLY_MODE_OPTIONS,
+  CODEX_CHANNEL_MODE_OPTIONS,
   EXPIRY_PRESET_OPTIONS,
   FAMILY_OPTIONS,
   type PolicyDraft,
@@ -66,6 +67,18 @@ export function PolicyEditorSections({
             value={draft.apiKey}
             onChange={(event) => onDraftChange('apiKey', event.target.value)}
             placeholder="输入 API Key"
+          />
+          <Input
+            label="名称"
+            value={draft.name}
+            onChange={(event) => onDraftChange('name', event.target.value)}
+            placeholder="可选"
+          />
+          <Input
+            label="备注"
+            value={draft.note}
+            onChange={(event) => onDraftChange('note', event.target.value)}
+            placeholder="可选"
           />
           <Input
             label="创建时间"
@@ -176,6 +189,20 @@ export function PolicyEditorSections({
             <div className="hint">
               继承全局时跟随系统页总开关；也可以对当前 API Key 单独强制为“仅允许 Claude
               Code”或关闭限制。
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Codex 渠道</label>
+            <Select
+              value={draft.codexChannelMode}
+              options={CODEX_CHANNEL_MODE_OPTIONS}
+              onChange={(value) =>
+                onDraftChange('codexChannelMode', value as PolicyDraft['codexChannelMode'])
+              }
+            />
+            <div className="hint">
+              `auto` 保持当前默认行为；也可以把当前 API Key 固定到 AI Provider 或 Codex auth
+              file。
             </div>
           </div>
         </div>

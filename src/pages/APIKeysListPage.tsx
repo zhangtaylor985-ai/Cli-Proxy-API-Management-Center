@@ -25,7 +25,7 @@ import type {
   ApiKeyRecordStatsItem,
   ApiKeyRecordSummaryLiteView,
 } from '@/services/api/apiKeyRecords';
-import { useNotificationStore } from '@/stores';
+import { useAuthStore, useNotificationStore } from '@/stores';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: '全部状态' },
@@ -54,6 +54,8 @@ type SortValue = 'last_used' | 'created' | 'expires' | 'api_key';
 export function APIKeysListPage() {
   const navigate = useNavigate();
   const { showNotification } = useNotificationStore();
+  const role = useAuthStore((state) => state.role);
+  const isStaff = role === 'staff';
 
   const [items, setItems] = useState<ApiKeyRecordSummaryLiteView[]>([]);
   const [stats, setStats] = useState<Record<string, ApiKeyRecordStatsItem>>({});
@@ -111,7 +113,7 @@ export function APIKeysListPage() {
 
   const loadStats = useCallback(
     async (keys: string[]) => {
-      if (keys.length === 0) return;
+      if (isStaff || keys.length === 0) return;
       setStatsLoading(true);
       try {
         const fetched = await apiKeyRecordsApi.stats(keys, range);
@@ -130,7 +132,7 @@ export function APIKeysListPage() {
         setStatsLoading(false);
       }
     },
-    [range, showNotification]
+    [isStaff, range, showNotification]
   );
 
   const loadGroups = useCallback(async () => {
@@ -153,10 +155,10 @@ export function APIKeysListPage() {
 
   // Load stats for whatever page the list just returned.
   useEffect(() => {
-    if (items.length === 0) return;
+    if (isStaff || items.length === 0) return;
     void loadStats(items.map((item) => item.api_key));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, range]);
+  }, [isStaff, items, range]);
 
   useEffect(() => {
     void loadGroups();
@@ -242,56 +244,60 @@ export function APIKeysListPage() {
               {item.registered ? '已注册' : '仅策略配置'} · {item.policy_family || 'default'}
               {item.group_name ? ` · ${item.group_name}` : ''}
             </div>
+            {item.name && <div className={apiStyles.listItemMeta}>名称：{item.name}</div>}
+            {item.note && <div className={apiStyles.listItemMeta}>备注：{item.note}</div>}
           </div>
           <div className={apiStyles.groupItemBadges}>
             {item.disabled && <span className={`${apiStyles.badge} ${apiStyles.badgeDanger}`}>已禁用</span>}
             {!item.disabled && expired && (
               <span className={`${apiStyles.badge} ${apiStyles.badgeDanger}`}>已过期</span>
             )}
-            {statItem ? (
+            {!isStaff && statItem ? (
               <span className={`${apiStyles.badge} ${apiStyles[`badge${tone}`]}`}>
                 {formatPercent(highestPercent)}
               </span>
-            ) : (
+            ) : !isStaff ? (
               <span className={`${apiStyles.badge} ${apiStyles.badgeSafe}`}>
                 <span className={listStyles.skeleton} style={{ width: 24 }} />
               </span>
-            )}
+            ) : null}
           </div>
         </div>
-        <div className={apiStyles.listMetrics}>
-          <span>
-            {statItem ? (
-              `${formatCost(statItem.today.cost_usd)} 今日`
-            ) : (
-              <>
-                <span className={listStyles.skeleton} /> 今日
-              </>
-            )}
-          </span>
-          <span>
-            {statItem ? (
-              `${formatCost(statItem.current_period.cost_usd)} 周期`
-            ) : (
-              <>
-                <span className={listStyles.skeleton} /> 周期
-              </>
-            )}
-          </span>
-          <span>
-            {statItem ? (
-              `${formatNumber(statItem.today.total_tokens)} tokens`
-            ) : (
-              <>
-                <span className={listStyles.skeleton} /> tokens
-              </>
-            )}
-          </span>
-        </div>
+        {!isStaff && (
+          <div className={apiStyles.listMetrics}>
+            <span>
+              {statItem ? (
+                `${formatCost(statItem.today.cost_usd)} 今日`
+              ) : (
+                <>
+                  <span className={listStyles.skeleton} /> 今日
+                </>
+              )}
+            </span>
+            <span>
+              {statItem ? (
+                `${formatCost(statItem.current_period.cost_usd)} 周期`
+              ) : (
+                <>
+                  <span className={listStyles.skeleton} /> 周期
+                </>
+              )}
+            </span>
+            <span>
+              {statItem ? (
+                `${formatNumber(statItem.today.total_tokens)} tokens`
+              ) : (
+                <>
+                  <span className={listStyles.skeleton} /> tokens
+                </>
+              )}
+            </span>
+          </div>
+        )}
         <div className={apiStyles.listItemMeta}>
           创建于: {formatDateTime(item.created_at)} · 到期: {formatDateTime(item.expires_at)}
         </div>
-        <div className={apiStyles.listItemMeta}>最近使用: {formatDateTime(item.last_used_at)}</div>
+        {!isStaff && <div className={apiStyles.listItemMeta}>最近使用: {formatDateTime(item.last_used_at)}</div>}
       </button>
     );
   };
@@ -302,7 +308,9 @@ export function APIKeysListPage() {
         <div>
           <h1 className={apiStyles.pageTitle}>API Keys 管理</h1>
           <p className={apiStyles.description}>
-            分页查看每个 API Key 的当前策略与预算占用；新建 / 编辑均会进入独立的详情页，移动端也能完整使用。
+            {isStaff
+              ? '员工账号仅可查看和维护 API Key 策略；预算统计、系统配置与其他工作台区域不会显示。'
+              : '分页查看每个 API Key 的当前策略与预算占用；新建 / 编辑均会进入独立的详情页，移动端也能完整使用。'}
           </p>
         </div>
         <div className={listStyles.headerActions}>
@@ -314,13 +322,17 @@ export function APIKeysListPage() {
             }}
             placeholder="搜索 API Key"
           />
-          <Select value={range} options={RANGE_OPTIONS} onChange={setRange} fullWidth={false} />
+          {!isStaff && (
+            <Select value={range} options={RANGE_OPTIONS} onChange={setRange} fullWidth={false} />
+          )}
           <Button variant="secondary" onClick={() => void loadList()} loading={listLoading}>
             刷新
           </Button>
-          <Button variant="secondary" onClick={() => navigate('/api-keys/groups')}>
-            账户组
-          </Button>
+          {!isStaff && (
+            <Button variant="secondary" onClick={() => navigate('/api-keys/groups')}>
+              账户组
+            </Button>
+          )}
           <Button onClick={openCreateModal}>新建 Key</Button>
         </div>
       </div>
@@ -332,7 +344,7 @@ export function APIKeysListPage() {
         extra={
           <span className={apiStyles.listMeta}>
             {listLoading ? '加载中...' : `共 ${pagination.total} 项`}
-            {statsLoading ? ' · 费用统计加载中...' : ''}
+            {!isStaff && statsLoading ? ' · 费用统计加载中...' : ''}
           </span>
         }
       >

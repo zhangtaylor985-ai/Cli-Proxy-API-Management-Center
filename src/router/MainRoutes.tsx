@@ -24,6 +24,7 @@ import { APIKeyGroupsPage } from '@/pages/APIKeyGroupsPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { SystemPage } from '@/pages/SystemPage';
 import { SessionTrajectoriesPage } from '@/pages/SessionTrajectoriesPage';
+import { useAuthStore } from '@/stores';
 
 const mainRoutes = [
   { path: '/', element: <DashboardPage /> },
@@ -88,6 +89,17 @@ const mainRoutes = [
   { path: '*', element: <Navigate to="/" replace /> },
 ];
 
+const staffRoutes = [
+  { path: '/', element: <Navigate to="/api-keys" replace /> },
+  { path: '/dashboard', element: <Navigate to="/api-keys" replace /> },
+  { path: '/settings', element: <Navigate to="/api-keys" replace /> },
+  { path: '/api-keys', element: <APIKeysListPage /> },
+  { path: '/api-keys/new', element: <APIKeyEditPage /> },
+  { path: '/api-keys/:apiKey', element: <APIKeyEditPage /> },
+  { path: '*', element: <Navigate to="/api-keys" replace /> },
+];
+
 export function MainRoutes({ location }: { location?: Location }) {
-  return useRoutes(mainRoutes, location);
+  const role = useAuthStore((state) => state.role);
+  return useRoutes(role === 'staff' ? staffRoutes : mainRoutes, location);
 }

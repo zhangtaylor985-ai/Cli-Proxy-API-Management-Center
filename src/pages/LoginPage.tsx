@@ -77,13 +77,14 @@ export function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const restoreSession = useAuthStore((state) => state.restoreSession);
   const storedBase = useAuthStore((state) => state.apiBase);
-  const storedKey = useAuthStore((state) => state.managementKey);
+  const storedUsername = useAuthStore((state) => state.username);
   const storedRememberPassword = useAuthStore((state) => state.rememberPassword);
 
   const [apiBase, setApiBase] = useState('');
-  const [managementKey, setManagementKey] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showCustomBase, setShowCustomBase] = useState(false);
-  const [showKey, setShowKey] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberPassword, setRememberPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [autoLoading, setAutoLoading] = useState(true);
@@ -122,8 +123,9 @@ export function LoginPage() {
           }, 1500);
         } else {
           setApiBase(storedBase || detectedBase);
-          setManagementKey(storedKey || '');
-          setRememberPassword(storedRememberPassword || Boolean(storedKey));
+          setUsername(storedUsername || '');
+          setPassword('');
+          setRememberPassword(storedRememberPassword || Boolean(storedUsername));
         }
       } finally {
         if (!autoLoginSuccess) {
@@ -137,7 +139,7 @@ export function LoginPage() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!managementKey.trim()) {
+    if (!username.trim() || !password.trim()) {
       setError(t('login.error_required'));
       return;
     }
@@ -148,7 +150,8 @@ export function LoginPage() {
     try {
       await login({
         apiBase: baseToUse,
-        managementKey: managementKey.trim(),
+        username: username.trim(),
+        password,
         rememberPassword
       });
       showNotification(t('common.connected_status'), 'success');
@@ -160,7 +163,7 @@ export function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBase, detectedBase, login, managementKey, navigate, rememberPassword, showNotification, t]);
+  }, [apiBase, detectedBase, login, navigate, password, rememberPassword, showNotification, t, username]);
 
   const handleSubmitKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -254,29 +257,37 @@ export function LoginPage() {
 
               <Input
                 autoFocus
-                label={t('login.management_key_label')}
-                placeholder={t('login.management_key_placeholder')}
-                type={showKey ? 'text' : 'password'}
-                value={managementKey}
-                onChange={(e) => setManagementKey(e.target.value)}
+                label={t('login.username_label', { defaultValue: '用户名' })}
+                placeholder={t('login.username_placeholder', { defaultValue: '请输入用户名' })}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={handleSubmitKeyDown}
+              />
+
+              <Input
+                label={t('login.password_label', { defaultValue: '密码' })}
+                placeholder={t('login.password_placeholder', { defaultValue: '请输入密码' })}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleSubmitKeyDown}
                 rightElement={
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    onClick={() => setShowKey((prev) => !prev)}
+                    onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={
-                      showKey
-                        ? t('login.hide_key', { defaultValue: '隐藏密钥' })
-                        : t('login.show_key', { defaultValue: '显示密钥' })
+                      showPassword
+                        ? t('login.hide_password', { defaultValue: '隐藏密码' })
+                        : t('login.show_password', { defaultValue: '显示密码' })
                     }
                     title={
-                      showKey
-                        ? t('login.hide_key', { defaultValue: '隐藏密钥' })
-                        : t('login.show_key', { defaultValue: '显示密钥' })
+                      showPassword
+                        ? t('login.hide_password', { defaultValue: '隐藏密码' })
+                        : t('login.show_password', { defaultValue: '显示密码' })
                     }
                   >
-                    {showKey ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                    {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                   </button>
                 }
               />

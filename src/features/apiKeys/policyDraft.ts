@@ -1,6 +1,7 @@
 import type { ApiKeyPolicyView } from '@/services/api/apiKeyRecords';
 
 export type ClaudeCodeOnlyMode = 'inherit' | 'enabled' | 'disabled';
+export type CodexChannelMode = 'auto' | 'provider' | 'auth_file';
 
 /**
  * PolicyDraft is the form-state shape used by the edit page. All fields are
@@ -9,6 +10,8 @@ export type ClaudeCodeOnlyMode = 'inherit' | 'enabled' | 'disabled';
  */
 export type PolicyDraft = {
   apiKey: string;
+  name: string;
+  note: string;
   createdAt: string;
   expiresAt: string;
   disabled: boolean;
@@ -16,6 +19,7 @@ export type PolicyDraft = {
   allowClaudeFamily: boolean;
   allowGptFamily: boolean;
   fastMode: boolean;
+  codexChannelMode: CodexChannelMode;
   enableClaudeModels: boolean;
   claudeUsageLimitUsd: string;
   claudeGptTargetFamily: string;
@@ -53,6 +57,12 @@ export const CLAUDE_CODE_ONLY_MODE_OPTIONS: Array<{ value: ClaudeCodeOnlyMode; l
   { value: 'inherit', label: '继承全局' },
   { value: 'enabled', label: '仅允许 Claude Code' },
   { value: 'disabled', label: '关闭限制' },
+];
+
+export const CODEX_CHANNEL_MODE_OPTIONS: Array<{ value: CodexChannelMode; label: string }> = [
+  { value: 'auto', label: '自动选择' },
+  { value: 'provider', label: '仅 AI Provider' },
+  { value: 'auth_file', label: '仅 Codex auth file' },
 ];
 
 export const EXPIRY_PRESET_OPTIONS = [
@@ -120,6 +130,8 @@ export function resolveExpiryPreset(value: string): string {
 export function emptyDraft(): PolicyDraft {
   return {
     apiKey: '',
+    name: '',
+    note: '',
     createdAt: '',
     expiresAt: addExpiryPreset('1m'),
     disabled: false,
@@ -127,6 +139,7 @@ export function emptyDraft(): PolicyDraft {
     allowClaudeFamily: true,
     allowGptFamily: false,
     fastMode: false,
+    codexChannelMode: 'auto',
     enableClaudeModels: false,
     claudeUsageLimitUsd: '',
     claudeGptTargetFamily: '',
@@ -246,6 +259,8 @@ export function budgetTone(percent: number): 'Safe' | 'Warn' | 'Danger' {
 export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDraft {
   return {
     apiKey: policy.api_key || fallbackKey,
+    name: policy.name || '',
+    note: policy.note || '',
     createdAt: policy.created_at || '',
     expiresAt: formatDateTimeLocal(policy.expires_at) || addExpiryPreset('1m'),
     disabled: Boolean(policy.disabled),
@@ -253,6 +268,7 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     allowClaudeFamily: policy.allow_claude_family !== false,
     allowGptFamily: Boolean(policy.allow_gpt_family),
     fastMode: Boolean(policy.fast_mode),
+    codexChannelMode: policy.codex_channel_mode || 'auto',
     enableClaudeModels: Boolean(policy.enable_claude_models),
     claudeUsageLimitUsd: policy.claude_usage_limit_usd ? String(policy.claude_usage_limit_usd) : '',
     claudeGptTargetFamily: policy.claude_gpt_target_family || '',
@@ -277,6 +293,8 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
 export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
   return {
     api_key: draft.apiKey.trim(),
+    name: draft.name.trim(),
+    note: draft.note.trim(),
     created_at: draft.createdAt.trim(),
     expires_at: toIsoOrEmpty(draft.expiresAt),
     disabled: draft.disabled,
@@ -284,6 +302,7 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     allow_claude_family: draft.allowClaudeFamily,
     allow_gpt_family: draft.allowGptFamily,
     fast_mode: draft.fastMode,
+    codex_channel_mode: draft.codexChannelMode,
     enable_claude_models: draft.enableClaudeModels,
     claude_usage_limit_usd: Number(draft.claudeUsageLimitUsd || 0),
     claude_gpt_target_family: draft.claudeGptTargetFamily,

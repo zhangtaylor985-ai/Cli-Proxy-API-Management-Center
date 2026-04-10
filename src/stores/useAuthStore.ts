@@ -8,6 +8,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AuthState, LoginCredentials, ConnectionStatus } from '@/types';
 import { STORAGE_KEY_AUTH } from '@/utils/constants';
 import { secureStorage } from '@/services/storage/secureStorage';
+import { authApi } from '@/services/api/auth';
 import { apiClient } from '@/services/api/client';
 import { useConfigStore } from './useConfigStore';
 import { useUsageStatsStore } from './useUsageStatsStore';
@@ -35,6 +36,8 @@ export const useAuthStore = create<AuthStoreState>()(
       isAuthenticated: false,
       apiBase: '',
       managementKey: '',
+      username: '',
+      role: null,
       rememberPassword: false,
       serverVersion: null,
       serverBuildDate: null,
@@ -54,7 +57,7 @@ export const useAuthStore = create<AuthStoreState>()(
             secureStorage.getItem<string>('apiUrl', { encrypt: true });
           const legacyKey = secureStorage.getItem<string>('managementKey');
 
-          const { apiBase, managementKey, rememberPassword } = get();
+          const { apiBase, managementKey, rememberPassword, username } = get();
           const resolvedBase = normalizeApiBase(apiBase || legacyBase || detectApiBaseFromLocation());
           const resolvedKey = managementKey || legacyKey || '';
           const resolvedRememberPassword = rememberPassword || Boolean(managementKey) || Boolean(legacyKey);
@@ -62,18 +65,14 @@ export const useAuthStore = create<AuthStoreState>()(
           set({
             apiBase: resolvedBase,
             managementKey: resolvedKey,
+            username: resolvedRememberPassword ? username : '',
             rememberPassword: resolvedRememberPassword
           });
           apiClient.setConfig({ apiBase: resolvedBase, managementKey: resolvedKey });
 
           if (wasLoggedIn && resolvedBase && resolvedKey) {
             try {
-              await get().login({
-                apiBase: resolvedBase,
-                managementKey: resolvedKey,
-                rememberPassword: resolvedRememberPassword
-              });
-              return true;
+              return await get().checkAuth();
             } catch (error) {
               console.warn('Auto login failed:', error);
               return false;
@@ -89,26 +88,35 @@ export const useAuthStore = create<AuthStoreState>()(
       // 登录
       login: async (credentials) => {
         const apiBase = normalizeApiBase(credentials.apiBase);
-        const managementKey = credentials.managementKey.trim();
+        const username = credentials.username.trim();
+        const password = credentials.password;
         const rememberPassword = credentials.rememberPassword ?? get().rememberPassword ?? false;
 
         try {
           set({ connectionStatus: 'connecting' });
 
-          // 配置 API 客户端
+          apiClient.setConfig({
+            apiBase,
+            managementKey: ''
+          });
+
+          const response = await authApi.login({
+            username,
+            password
+          });
+          const managementKey = response.token.trim();
+
           apiClient.setConfig({
             apiBase,
             managementKey
           });
 
-          // 测试连接 - 获取配置
-          await useConfigStore.getState().fetchConfig(undefined, true);
-
-          // 登录成功
           set({
             isAuthenticated: true,
             apiBase,
             managementKey,
+            username: response.username,
+            role: response.role,
             rememberPassword,
             connectionStatus: 'connected',
             connectionError: null
@@ -138,10 +146,16 @@ export const useAuthStore = create<AuthStoreState>()(
         restoreSessionPromise = null;
         useConfigStore.getState().clearCache();
         useUsageStatsStore.getState().clearUsageStats();
+        void authApi.logout().catch(() => {
+          // Ignore logout failures during local cleanup.
+        });
+        apiClient.setConfig({ apiBase: '', managementKey: '' });
         set({
           isAuthenticated: false,
           apiBase: '',
           managementKey: '',
+          username: '',
+          role: null,
           serverVersion: null,
           serverBuildDate: null,
           connectionStatus: 'disconnected',
@@ -159,14 +173,13 @@ export const useAuthStore = create<AuthStoreState>()(
         }
 
         try {
-          // 重新配置客户端
           apiClient.setConfig({ apiBase, managementKey });
-
-          // 验证连接
-          await useConfigStore.getState().fetchConfig();
+          const response = await authApi.me();
 
           set({
             isAuthenticated: true,
+            username: response.username,
+            role: response.role,
             connectionStatus: 'connected'
           });
 
@@ -174,6 +187,8 @@ export const useAuthStore = create<AuthStoreState>()(
         } catch {
           set({
             isAuthenticated: false,
+            username: '',
+            role: null,
             connectionStatus: 'error'
           });
           return false;
@@ -210,6 +225,7 @@ export const useAuthStore = create<AuthStoreState>()(
       partialize: (state) => ({
         apiBase: state.apiBase,
         ...(state.rememberPassword ? { managementKey: state.managementKey } : {}),
+        ...(state.rememberPassword ? { username: state.username, role: state.role } : {}),
         rememberPassword: state.rememberPassword,
         serverVersion: state.serverVersion,
         serverBuildDate: state.serverBuildDate

@@ -20,6 +20,7 @@ export type ApiKeyHeroCardProps = {
   draft: PolicyDraft;
   summary: ApiKeyRecordSummaryView | null;
   activeGroup: ApiKeyGroupView | null;
+  showUsageMetrics?: boolean;
   actions?: ReactNode;
 };
 
@@ -35,7 +36,16 @@ function formatWindowRange(windowView: ApiKeyRecordSummaryView['daily_budget']) 
  * It mirrors the layout previously embedded in APIKeysWorkbenchPage, so the
  * visual language is identical to the legacy workbench.
  */
-export function ApiKeyHeroCard({ mode, draft, summary, activeGroup, actions }: ApiKeyHeroCardProps) {
+export function ApiKeyHeroCard({
+  mode,
+  draft,
+  summary,
+  activeGroup,
+  showUsageMetrics = true,
+  actions,
+}: ApiKeyHeroCardProps) {
+  const displayName = summary?.name || draft.name;
+  const displayNote = summary?.note || draft.note;
   return (
     <Card className={styles.heroCard} title={mode === 'edit' ? '策略编辑工作台' : '创建 API Key'} extra={actions}>
       <div className={styles.editorLead}>
@@ -44,6 +54,8 @@ export function ApiKeyHeroCard({ mode, draft, summary, activeGroup, actions }: A
             {mode === 'edit' ? '当前编辑' : '创建草稿'}
           </span>
           <h3>{summary?.masked_api_key ?? draft.apiKey ?? '新 API Key'}</h3>
+          {displayName && <div className={styles.listItemMeta}>名称：{displayName}</div>}
+          {displayNote && <div className={styles.listItemMeta}>备注：{displayNote}</div>}
         </div>
         <div className={styles.editorLeadMeta}>
           <span>创建时间：{formatDateTime(summary?.created_at || draft.createdAt)}</span>
@@ -61,36 +73,38 @@ export function ApiKeyHeroCard({ mode, draft, summary, activeGroup, actions }: A
         </div>
       </div>
 
-      <div className={styles.heroMetrics}>
-        <div className={styles.heroMetric}>
-          <span className={styles.metricLabel}>今日费用</span>
-          <strong>{formatCost(summary?.today.cost_usd)}</strong>
-          <span className={styles.heroMetricHint}>最近 24 小时累计</span>
+      {showUsageMetrics && (
+        <div className={styles.heroMetrics}>
+          <div className={styles.heroMetric}>
+            <span className={styles.metricLabel}>今日费用</span>
+            <strong>{formatCost(summary?.today.cost_usd)}</strong>
+            <span className={styles.heroMetricHint}>最近 24 小时累计</span>
+          </div>
+          <div className={styles.heroMetric}>
+            <span className={styles.metricLabel}>今日 Tokens</span>
+            <strong>{formatNumber(summary?.today.total_tokens)}</strong>
+            <span className={styles.heroMetricHint}>快速判断请求量是否异常</span>
+          </div>
+          <div className={styles.heroMetric}>
+            <span className={styles.metricLabel}>当前周期费用</span>
+            <strong>{formatCost(summary?.current_period.cost_usd)}</strong>
+            <span className={styles.heroMetricHint}>
+              {summary ? formatWindowRange(summary.weekly_budget) : '未配置'}
+            </span>
+          </div>
+          <div className={styles.heroMetric}>
+            <span className={styles.metricLabel}>Token 包余额</span>
+            <strong>
+              {summary ? formatCost(summary.token_package.remaining_usd) : '未配置'}
+            </strong>
+            <span className={styles.heroMetricHint}>
+              {summary?.token_package.started_at
+                ? `开始于 ${formatDateTime(summary.token_package.started_at)}`
+                : '预付流量包未启用'}
+            </span>
+          </div>
         </div>
-        <div className={styles.heroMetric}>
-          <span className={styles.metricLabel}>今日 Tokens</span>
-          <strong>{formatNumber(summary?.today.total_tokens)}</strong>
-          <span className={styles.heroMetricHint}>快速判断请求量是否异常</span>
-        </div>
-        <div className={styles.heroMetric}>
-          <span className={styles.metricLabel}>当前周期费用</span>
-          <strong>{formatCost(summary?.current_period.cost_usd)}</strong>
-          <span className={styles.heroMetricHint}>
-            {summary ? formatWindowRange(summary.weekly_budget) : '未配置'}
-          </span>
-        </div>
-        <div className={styles.heroMetric}>
-          <span className={styles.metricLabel}>Token 包余额</span>
-          <strong>
-            {summary ? formatCost(summary.token_package.remaining_usd) : '未配置'}
-          </strong>
-          <span className={styles.heroMetricHint}>
-            {summary?.token_package.started_at
-              ? `开始于 ${formatDateTime(summary.token_package.started_at)}`
-              : '预付流量包未启用'}
-          </span>
-        </div>
-      </div>
+      )}
 
       {mode === 'new' && (
         <div className={styles.createHint}>

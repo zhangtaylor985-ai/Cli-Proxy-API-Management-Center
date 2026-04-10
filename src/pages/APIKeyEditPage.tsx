@@ -19,7 +19,7 @@ import type {
   ApiKeyRecordDetailView,
   ApiKeyRecordMutation,
 } from '@/services/api/apiKeyRecords';
-import { useNotificationStore } from '@/stores';
+import { useAuthStore, useNotificationStore } from '@/stores';
 import { isValidApiKeyCharset } from '@/utils/validation';
 
 type EditMode = 'new' | 'edit';
@@ -34,6 +34,7 @@ type EditMode = 'new' | 'edit';
 export function APIKeyEditPage() {
   const navigate = useNavigate();
   const { showNotification } = useNotificationStore();
+  const role = useAuthStore((state) => state.role);
   const params = useParams<{ apiKey?: string }>();
   const [searchParams] = useSearchParams();
 
@@ -48,6 +49,7 @@ export function APIKeyEditPage() {
   const [saving, setSaving] = useState(false);
   const [busyAction, setBusyAction] = useState<'reset' | 'delete' | null>(null);
   const [error, setError] = useState('');
+  const isStaff = role === 'staff';
 
   const loadGroups = useCallback(async () => {
     try {
@@ -254,6 +256,7 @@ export function APIKeyEditPage() {
           draft={draft}
           summary={detail?.summary ?? null}
           activeGroup={activeGroup}
+          showUsageMetrics={!isStaff}
           actions={heroActions}
         />
 
@@ -268,7 +271,7 @@ export function APIKeyEditPage() {
           />
         )}
 
-        {mode === 'edit' && (
+        {mode === 'edit' && !isStaff && (
           <ApiKeyAnalytics
             summary={detail?.summary ?? null}
             detail={detail}
