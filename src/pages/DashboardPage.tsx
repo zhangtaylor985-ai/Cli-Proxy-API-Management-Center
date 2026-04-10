@@ -99,8 +99,11 @@ export function DashboardPage() {
     }
 
     try {
-      const list = await apiKeyRecordsApi.list();
-      const normalized = normalizeApiKeyList(list.map((item) => item.api_key));
+      // Use a single large page to cover most deployments without introducing
+      // extra cursoring here; this is just a best-effort hint for the model
+      // fetch and falls back to [] if the management API is unreachable.
+      const list = await apiKeyRecordsApi.list({ page: 1, pageSize: 100 });
+      const normalized = normalizeApiKeyList(list.items.map((item) => item.api_key));
       if (normalized.length) {
         apiKeysCache.current = normalized;
       }
@@ -130,7 +133,7 @@ export function DashboardPage() {
       try {
         const [keysRes, filesRes, geminiRes, codexRes, claudeRes, openaiRes] =
           await Promise.allSettled([
-            apiKeyRecordsApi.list(),
+            apiKeyRecordsApi.list({ page: 1, pageSize: 1 }),
             authFilesApi.list(),
             providersApi.getGeminiKeys(),
             providersApi.getCodexConfigs(),
@@ -139,7 +142,7 @@ export function DashboardPage() {
           ]);
 
         setStats({
-          apiKeys: keysRes.status === 'fulfilled' ? keysRes.value.length : null,
+          apiKeys: keysRes.status === 'fulfilled' ? keysRes.value.pagination.total : null,
           authFiles: filesRes.status === 'fulfilled' ? filesRes.value.files.length : null
         });
 
