@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  IconKey,
-  IconBot,
-  IconFileText,
-  IconSatellite
-} from '@/components/ui/icons';
+import { IconKey, IconBot, IconFileText, IconSatellite } from '@/components/ui/icons';
 import { useAuthStore, useConfigStore, useModelsStore } from '@/stores';
 import { apiKeyRecordsApi, providersApi, authFilesApi } from '@/services/api';
 import styles from './DashboardPage.module.scss';
@@ -44,14 +39,14 @@ export function DashboardPage() {
     authFiles: number | null;
   }>({
     apiKeys: null,
-    authFiles: null
+    authFiles: null,
   });
 
   const [providerStats, setProviderStats] = useState<ProviderStats>({
     gemini: null,
     codex: null,
     claude: null,
-    openai: null
+    openai: null,
   });
 
   const [loading, setLoading] = useState(true);
@@ -143,14 +138,14 @@ export function DashboardPage() {
 
         setStats({
           apiKeys: keysRes.status === 'fulfilled' ? keysRes.value.pagination.total : null,
-          authFiles: filesRes.status === 'fulfilled' ? filesRes.value.files.length : null
+          authFiles: filesRes.status === 'fulfilled' ? filesRes.value.files.length : null,
         });
 
         setProviderStats({
           gemini: geminiRes.status === 'fulfilled' ? geminiRes.value.length : null,
           codex: codexRes.status === 'fulfilled' ? codexRes.value.length : null,
           claude: claudeRes.status === 'fulfilled' ? claudeRes.value.length : null,
-          openai: openaiRes.status === 'fulfilled' ? openaiRes.value.length : null
+          openai: openaiRes.status === 'fulfilled' ? openaiRes.value.length : null,
         });
       } finally {
         setLoading(false);
@@ -190,7 +185,7 @@ export function DashboardPage() {
       icon: <IconKey size={24} />,
       path: '/api-keys',
       loading: loading && stats.apiKeys === null,
-      sublabel: t('nav.api_keys')
+      sublabel: t('nav.api_keys'),
     },
     {
       label: t('nav.ai_providers'),
@@ -203,9 +198,9 @@ export function DashboardPage() {
             gemini: providerStats.gemini ?? '-',
             codex: providerStats.codex ?? '-',
             claude: providerStats.claude ?? '-',
-            openai: providerStats.openai ?? '-'
+            openai: providerStats.openai ?? '-',
           })
-        : undefined
+        : undefined,
     },
     {
       label: t('nav.auth_files'),
@@ -213,7 +208,7 @@ export function DashboardPage() {
       icon: <IconFileText size={24} />,
       path: '/auth-files',
       loading: loading && stats.authFiles === null,
-      sublabel: t('dashboard.oauth_credentials')
+      sublabel: t('dashboard.oauth_credentials'),
     },
     {
       label: t('dashboard.available_models'),
@@ -221,8 +216,8 @@ export function DashboardPage() {
       icon: <IconSatellite size={24} />,
       path: '/system',
       loading: modelsLoading,
-      sublabel: t('dashboard.available_models_desc')
-    }
+      sublabel: t('dashboard.available_models_desc'),
+    },
   ];
 
   const routingStrategyRaw = config?.routingStrategy?.trim() || '';
@@ -305,19 +300,29 @@ export function DashboardPage() {
           <div className={styles.configGrid}>
             <div className={styles.configItem}>
               <span className={styles.configLabel}>{t('basic_settings.debug_enable')}</span>
-              <span className={`${styles.configValue} ${config.debug ? styles.enabled : styles.disabled}`}>
+              <span
+                className={`${styles.configValue} ${config.debug ? styles.enabled : styles.disabled}`}
+              >
                 {config.debug ? t('common.yes') : t('common.no')}
               </span>
             </div>
             <div className={styles.configItem}>
-              <span className={styles.configLabel}>{t('basic_settings.usage_statistics_enable')}</span>
-              <span className={`${styles.configValue} ${config.usageStatisticsEnabled ? styles.enabled : styles.disabled}`}>
+              <span className={styles.configLabel}>
+                {t('basic_settings.usage_statistics_enable')}
+              </span>
+              <span
+                className={`${styles.configValue} ${config.usageStatisticsEnabled ? styles.enabled : styles.disabled}`}
+              >
                 {config.usageStatisticsEnabled ? t('common.yes') : t('common.no')}
               </span>
             </div>
             <div className={styles.configItem}>
-              <span className={styles.configLabel}>{t('basic_settings.logging_to_file_enable')}</span>
-              <span className={`${styles.configValue} ${config.loggingToFile ? styles.enabled : styles.disabled}`}>
+              <span className={styles.configLabel}>
+                {t('basic_settings.logging_to_file_enable')}
+              </span>
+              <span
+                className={`${styles.configValue} ${config.loggingToFile ? styles.enabled : styles.disabled}`}
+              >
                 {config.loggingToFile ? t('common.yes') : t('common.no')}
               </span>
             </div>
@@ -327,7 +332,9 @@ export function DashboardPage() {
             </div>
             <div className={styles.configItem}>
               <span className={styles.configLabel}>{t('basic_settings.ws_auth_enable')}</span>
-              <span className={`${styles.configValue} ${config.wsAuth ? styles.enabled : styles.disabled}`}>
+              <span
+                className={`${styles.configValue} ${config.wsAuth ? styles.enabled : styles.disabled}`}
+              >
                 {config.wsAuth ? t('common.yes') : t('common.no')}
               </span>
             </div>

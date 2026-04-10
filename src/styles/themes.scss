@@ -28,6 +28,14 @@
   --primary-active: #726d67;
   --primary-contrast: #ffffff;
 
+  // Primary action button override: a warmer, more saturated tone so
+  // `.btn-primary` reads as a clear call-to-action next to the neutral
+  // `--primary-color` which is shared by focus rings, toggles, links, etc.
+  --btn-primary-bg: #a86742;
+  --btn-primary-hover: #94572f;
+  --btn-primary-contrast: #ffffff;
+  --btn-primary-shadow: 0 1px 2px 0 rgba(148, 87, 47, 0.25);
+
   --success-color: #10b981;
   --warning-color: #c65746; // 错误/警告色
   --error-color: #c65746;
@@ -80,6 +88,11 @@
   --primary-hover: #7f7a74;
   --primary-active: #726d67;
   --primary-contrast: #ffffff;
+
+  --btn-primary-bg: #a86742;
+  --btn-primary-hover: #94572f;
+  --btn-primary-contrast: #ffffff;
+  --btn-primary-shadow: 0 1px 2px 0 rgba(148, 87, 47, 0.22);
 
   --success-color: #10b981;
   --warning-color: #c65746;
@@ -134,6 +147,14 @@
   --primary-hover: #9a948e;
   --primary-active: #a6a099;
   --primary-contrast: #ffffff;
+
+  // In dark mode the action button needs to be noticeably warmer and
+  // brighter than the neutral surrounding greys so it reads as the primary
+  // call-to-action.
+  --btn-primary-bg: #c4784a;
+  --btn-primary-hover: #d58a5b;
+  --btn-primary-contrast: #ffffff;
+  --btn-primary-shadow: 0 2px 8px 0 rgba(196, 120, 74, 0.3);
 
   --success-color: #10b981;
   --warning-color: #c65746;

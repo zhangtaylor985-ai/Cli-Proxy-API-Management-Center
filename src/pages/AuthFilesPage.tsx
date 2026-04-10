@@ -201,11 +201,11 @@ export function AuthFilesPage() {
     const regularPageSize =
       typeof persisted.regularPageSize === 'number' && Number.isFinite(persisted.regularPageSize)
         ? clampCardPageSize(persisted.regularPageSize)
-        : legacyPageSize ?? DEFAULT_REGULAR_PAGE_SIZE;
+        : (legacyPageSize ?? DEFAULT_REGULAR_PAGE_SIZE);
     const compactPageSize =
       typeof persisted.compactPageSize === 'number' && Number.isFinite(persisted.compactPageSize)
         ? clampCardPageSize(persisted.compactPageSize)
-        : legacyPageSize ?? DEFAULT_COMPACT_PAGE_SIZE;
+        : (legacyPageSize ?? DEFAULT_COMPACT_PAGE_SIZE);
     setPageSizeByMode({
       regular: regularPageSize,
       compact: compactPageSize,
@@ -795,6 +795,7 @@ export function AuthFilesPage() {
                     statusUpdating={statusUpdating}
                     quotaFilterType={quotaFilterType}
                     keyStats={keyStats}
+                    usageDetails={usageDetails}
                     statusBarCache={statusBarCache}
                     onShowModels={showModels}
                     onDownload={handleDownload}

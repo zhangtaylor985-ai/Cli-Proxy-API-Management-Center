@@ -5,7 +5,8 @@ import {
   collectUsageDetails,
   buildCandidateUsageSourceIds,
   formatCompactNumber,
-  normalizeAuthIndex
+  isSlowUsageDetail,
+  normalizeAuthIndex,
 } from '@/utils/usage';
 import { authFilesApi } from '@/services/api/authFiles';
 import type { GeminiKeyConfig, ProviderKeyConfig, OpenAIProviderConfig } from '@/types';
@@ -30,13 +31,16 @@ interface CredentialRow {
   type: string;
   success: number;
   failure: number;
+  slowSuccess: number;
   total: number;
   successRate: number;
+  slowSuccessRate: number;
 }
 
 interface CredentialBucket {
   success: number;
   failure: number;
+  slowSuccess: number;
 }
 
 export function CredentialStatsCard({
@@ -74,7 +78,9 @@ export function CredentialStatsCard({
         setAuthFileMap(map);
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Aggregate rows: all from bySource only (no separate byAuthIndex rows to avoid duplicates).
@@ -97,21 +103,27 @@ export function CredentialStatsCard({
 
       if (!source) {
         if (!authIdx) return;
-        const fallback = fallbackByAuthIndex.get(authIdx) ?? { success: 0, failure: 0 };
+        const fallback = fallbackByAuthIndex.get(authIdx) ?? {
+          success: 0,
+          failure: 0,
+          slowSuccess: 0,
+        };
         if (isFailed) {
           fallback.failure += 1;
         } else {
           fallback.success += 1;
+          if (isSlowUsageDetail(detail)) fallback.slowSuccess += 1;
         }
         fallbackByAuthIndex.set(authIdx, fallback);
         return;
       }
 
-      const bucket = bySource[source] ?? { success: 0, failure: 0 };
+      const bucket = bySource[source] ?? { success: 0, failure: 0, slowSuccess: 0 };
       if (isFailed) {
         bucket.failure += 1;
       } else {
         bucket.success += 1;
+        if (isSlowUsageDetail(detail)) bucket.slowSuccess += 1;
       }
       bySource[source] = bucket;
 
@@ -129,8 +141,10 @@ export function CredentialStatsCard({
       if (!target) return;
       target.success += bucket.success;
       target.failure += bucket.failure;
+      target.slowSuccess += bucket.slowSuccess;
       target.total = target.success + target.failure;
       target.successRate = target.total > 0 ? (target.success / target.total) * 100 : 100;
+      target.slowSuccessRate = target.success > 0 ? (target.slowSuccess / target.success) * 100 : 0;
     };
 
     // Aggregate all candidate source IDs for one provider config into a single row
@@ -139,16 +153,18 @@ export function CredentialStatsCard({
       prefix: string | undefined,
       name: string,
       type: string,
-      rowKey: string,
+      rowKey: string
     ) => {
       const candidates = buildCandidateUsageSourceIds({ apiKey, prefix });
       let success = 0;
       let failure = 0;
+      let slowSuccess = 0;
       candidates.forEach((id) => {
         const bucket = bySource[id];
         if (bucket) {
           success += bucket.success;
           failure += bucket.failure;
+          slowSuccess += bucket.slowSuccess;
           consumedSourceIds.add(id);
         }
       });
@@ -160,21 +176,45 @@ export function CredentialStatsCard({
           type,
           success,
           failure,
+          slowSuccess,
           total,
           successRate: (success / total) * 100,
+          slowSuccessRate: success > 0 ? (slowSuccess / success) * 100 : 0,
         });
       }
     };
 
     // Provider rows — one row per config, stats merged across all its candidate source IDs
     geminiKeys.forEach((c, i) =>
-      addConfigRow(c.apiKey, c.prefix, c.prefix?.trim() || `Gemini #${i + 1}`, 'gemini', `gemini:${i}`));
+      addConfigRow(
+        c.apiKey,
+        c.prefix,
+        c.prefix?.trim() || `Gemini #${i + 1}`,
+        'gemini',
+        `gemini:${i}`
+      )
+    );
     claudeConfigs.forEach((c, i) =>
-      addConfigRow(c.apiKey, c.prefix, c.prefix?.trim() || `Claude #${i + 1}`, 'claude', `claude:${i}`));
+      addConfigRow(
+        c.apiKey,
+        c.prefix,
+        c.prefix?.trim() || `Claude #${i + 1}`,
+        'claude',
+        `claude:${i}`
+      )
+    );
     codexConfigs.forEach((c, i) =>
-      addConfigRow(c.apiKey, c.prefix, c.prefix?.trim() || `Codex #${i + 1}`, 'codex', `codex:${i}`));
+      addConfigRow(c.apiKey, c.prefix, c.prefix?.trim() || `Codex #${i + 1}`, 'codex', `codex:${i}`)
+    );
     vertexConfigs.forEach((c, i) =>
-      addConfigRow(c.apiKey, c.prefix, c.prefix?.trim() || `Vertex #${i + 1}`, 'vertex', `vertex:${i}`));
+      addConfigRow(
+        c.apiKey,
+        c.prefix,
+        c.prefix?.trim() || `Vertex #${i + 1}`,
+        'vertex',
+        `vertex:${i}`
+      )
+    );
     // OpenAI compatibility providers — one row per provider, merged across all apiKey entries (prefix counted once).
     openaiProviders.forEach((provider, providerIndex) => {
       const prefix = provider.prefix;
@@ -188,11 +228,13 @@ export function CredentialStatsCard({
 
       let success = 0;
       let failure = 0;
+      let slowSuccess = 0;
       candidates.forEach((id) => {
         const bucket = bySource[id];
         if (bucket) {
           success += bucket.success;
           failure += bucket.failure;
+          slowSuccess += bucket.slowSuccess;
           consumedSourceIds.add(id);
         }
       });
@@ -205,8 +247,10 @@ export function CredentialStatsCard({
           type: 'openai',
           success,
           failure,
+          slowSuccess,
           total,
           successRate: (success / total) * 100,
+          slowSuccessRate: success > 0 ? (slowSuccess / success) * 100 : 0,
         });
       }
     });
@@ -222,8 +266,10 @@ export function CredentialStatsCard({
         type: authFile?.type || '',
         success: bucket.success,
         failure: bucket.failure,
+        slowSuccess: bucket.slowSuccess,
         total,
         successRate: total > 0 ? (bucket.success / total) * 100 : 100,
+        slowSuccessRate: bucket.success > 0 ? (bucket.slowSuccess / bucket.success) * 100 : 0,
       };
       const rowIndex = result.push(row) - 1;
       const authIdx = sourceToAuthIndex.get(key);
@@ -254,15 +300,18 @@ export function CredentialStatsCard({
       }
 
       const total = bucket.success + bucket.failure;
-      const rowIndex = result.push({
-        key: `auth:${authIdx}`,
-        displayName: mapped?.name || authIdx,
-        type: mapped?.type || '',
-        success: bucket.success,
-        failure: bucket.failure,
-        total,
-        successRate: (bucket.success / total) * 100
-      }) - 1;
+      const rowIndex =
+        result.push({
+          key: `auth:${authIdx}`,
+          displayName: mapped?.name || authIdx,
+          type: mapped?.type || '',
+          success: bucket.success,
+          failure: bucket.failure,
+          slowSuccess: bucket.slowSuccess,
+          total,
+          successRate: (bucket.success / total) * 100,
+          slowSuccessRate: bucket.success > 0 ? (bucket.slowSuccess / bucket.success) * 100 : 0,
+        }) - 1;
       authIndexToRowIndex.set(authIdx, rowIndex);
     });
 
@@ -275,51 +324,66 @@ export function CredentialStatsCard({
         <div className={styles.hint}>{t('common.loading')}</div>
       ) : rows.length > 0 ? (
         <div className={styles.detailsScroll}>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t('usage_stats.credential_name')}</th>
-                <th>{t('usage_stats.requests_count')}</th>
-                <th>{t('usage_stats.success_rate')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.key}>
-                  <td className={styles.modelCell}>
-                    <span>{row.displayName}</span>
-                    {row.type && (
-                      <span className={styles.credentialType}>{row.type}</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={styles.requestCountCell}>
-                      <span>{formatCompactNumber(row.total)}</span>
-                      <span className={styles.requestBreakdown}>
-                        (<span className={styles.statSuccess}>{row.success.toLocaleString()}</span>{' '}
-                        <span className={styles.statFailure}>{row.failure.toLocaleString()}</span>)
-                      </span>
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={
-                        row.successRate >= 95
-                          ? styles.statSuccess
-                          : row.successRate >= 80
-                            ? styles.statNeutral
-                            : styles.statFailure
-                      }
-                    >
-                      {row.successRate.toFixed(1)}%
-                    </span>
-                  </td>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>{t('usage_stats.credential_name')}</th>
+                  <th>{t('usage_stats.requests_count')}</th>
+                  <th>{t('usage_stats.success_rate')}</th>
+                  <th>{t('usage_stats.slow_success_rate', { defaultValue: '慢成功占比' })}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.key}>
+                    <td className={styles.modelCell}>
+                      <span>{row.displayName}</span>
+                      {row.type && <span className={styles.credentialType}>{row.type}</span>}
+                    </td>
+                    <td>
+                      <span className={styles.requestCountCell}>
+                        <span>{formatCompactNumber(row.total)}</span>
+                        <span className={styles.requestBreakdown}>
+                          (
+                          <span className={styles.statSuccess}>{row.success.toLocaleString()}</span>{' '}
+                          <span className={styles.statFailure}>{row.failure.toLocaleString()}</span>
+                          )
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          row.successRate >= 95
+                            ? styles.statSuccess
+                            : row.successRate >= 80
+                              ? styles.statNeutral
+                              : styles.statFailure
+                        }
+                      >
+                        {row.successRate.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          row.slowSuccessRate <= 5
+                            ? styles.statSuccess
+                            : row.slowSuccessRate <= 15
+                              ? styles.statNeutral
+                              : styles.statFailure
+                        }
+                      >
+                        {row.slowSuccess.toLocaleString()} / {row.success.toLocaleString()} (
+                        {row.slowSuccessRate.toFixed(1)}%)
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className={styles.hint}>{t('usage_stats.no_data')}</div>

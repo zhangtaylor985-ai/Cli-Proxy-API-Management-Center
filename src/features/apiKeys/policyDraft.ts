@@ -257,6 +257,8 @@ export function budgetTone(percent: number): 'Safe' | 'Warn' | 'Danger' {
 }
 
 export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDraft {
+  const groupId = policy.group_id || '';
+  const usesGroupBudget = Boolean(groupId);
   return {
     apiKey: policy.api_key || fallbackKey,
     name: policy.name || '',
@@ -264,7 +266,7 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     createdAt: policy.created_at || '',
     expiresAt: formatDateTimeLocal(policy.expires_at) || addExpiryPreset('1m'),
     disabled: Boolean(policy.disabled),
-    groupId: policy.group_id || '',
+    groupId,
     allowClaudeFamily: policy.allow_claude_family !== false,
     allowGptFamily: Boolean(policy.allow_gpt_family),
     fastMode: Boolean(policy.fast_mode),
@@ -278,9 +280,9 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     excludedModels: linesFromList(policy.excluded_models || []),
     allowClaudeOpus46: policy.allow_claude_opus_46 !== false,
     dailyLimits: linesFromMap(policy.daily_limits || {}),
-    dailyBudgetUsd: policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
-    weeklyBudgetUsd: policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
-    weeklyBudgetAnchorAt: normalizeHourInputValue(policy.weekly_budget_anchor_at),
+    dailyBudgetUsd: usesGroupBudget ? '' : policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
+    weeklyBudgetUsd: usesGroupBudget ? '' : policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
+    weeklyBudgetAnchorAt: usesGroupBudget ? '' : normalizeHourInputValue(policy.weekly_budget_anchor_at),
     tokenPackageUsd: policy.token_package_usd ? String(policy.token_package_usd) : '',
     tokenPackageStartedAt: formatDateTimeLocal(policy.token_package_started_at),
     modelRoutingRules: JSON.stringify(policy.model_routing_rules || [], null, 2),
@@ -291,6 +293,8 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
 }
 
 export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
+  const groupId = draft.groupId.trim();
+  const usesGroupBudget = Boolean(groupId);
   return {
     api_key: draft.apiKey.trim(),
     name: draft.name.trim(),
@@ -298,7 +302,7 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     created_at: draft.createdAt.trim(),
     expires_at: toIsoOrEmpty(draft.expiresAt),
     disabled: draft.disabled,
-    group_id: draft.groupId.trim(),
+    group_id: groupId,
     allow_claude_family: draft.allowClaudeFamily,
     allow_gpt_family: draft.allowGptFamily,
     fast_mode: draft.fastMode,
@@ -312,10 +316,12 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     excluded_models: listFromLines(draft.excludedModels),
     allow_claude_opus_46: draft.allowClaudeOpus46,
     daily_limits: mapFromLines(draft.dailyLimits),
-    daily_budget_usd: Number(draft.dailyBudgetUsd || 0),
-    weekly_budget_usd: Number(draft.weeklyBudgetUsd || 0),
+    daily_budget_usd: usesGroupBudget ? 0 : Number(draft.dailyBudgetUsd || 0),
+    weekly_budget_usd: usesGroupBudget ? 0 : Number(draft.weeklyBudgetUsd || 0),
     weekly_budget_anchor_at:
-      Number(draft.weeklyBudgetUsd || 0) > 0 ? toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt) : '',
+      usesGroupBudget || Number(draft.weeklyBudgetUsd || 0) <= 0
+        ? ''
+        : toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt),
     token_package_usd: Number(draft.tokenPackageUsd || 0),
     token_package_started_at: toIsoOrEmpty(draft.tokenPackageStartedAt),
     model_routing_rules: parseJsonArray(draft.modelRoutingRules),

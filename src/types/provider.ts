@@ -28,6 +28,11 @@ export interface GeminiKeyConfig {
   prefix?: string;
   baseUrl?: string;
   proxyUrl?: string;
+  probeMode?: string;
+  probePath?: string;
+  canaryEnabled?: boolean;
+  canaryPrompt?: string;
+  canaryIntervalSeconds?: number;
   models?: ModelAlias[];
   headers?: Record<string, string>;
   excludedModels?: string[];
@@ -43,6 +48,11 @@ export interface ProviderKeyConfig {
   baseUrl?: string;
   websockets?: boolean;
   proxyUrl?: string;
+  probeMode?: string;
+  probePath?: string;
+  canaryEnabled?: boolean;
+  canaryPrompt?: string;
+  canaryIntervalSeconds?: number;
   headers?: Record<string, string>;
   models?: ModelAlias[];
   excludedModels?: string[];
@@ -53,6 +63,11 @@ export interface OpenAIProviderConfig {
   name: string;
   prefix?: string;
   baseUrl: string;
+  probeMode?: string;
+  probePath?: string;
+  canaryEnabled?: boolean;
+  canaryPrompt?: string;
+  canaryIntervalSeconds?: number;
   apiKeyEntries: ApiKeyEntry[];
   headers?: Record<string, string>;
   models?: ModelAlias[];

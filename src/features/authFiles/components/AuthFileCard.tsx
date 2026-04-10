@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -13,7 +14,14 @@ import {
 import { ProviderStatusBar } from '@/components/providers/ProviderStatusBar';
 import type { AuthFileItem } from '@/types';
 import { resolveAuthProvider } from '@/utils/quota';
-import { calculateStatusBarData, normalizeAuthIndex, type KeyStats } from '@/utils/usage';
+import {
+  calculateStatusBarData,
+  isSlowUsageDetail,
+  normalizeAuthIndex,
+  normalizeUsageSourceId,
+  type KeyStats,
+  type UsageDetail,
+} from '@/utils/usage';
 import { formatFileSize } from '@/utils/format';
 import {
   QUOTA_PROVIDER_TYPES,
@@ -44,6 +52,7 @@ export type AuthFileCardProps = {
   statusUpdating: Record<string, boolean>;
   quotaFilterType: QuotaProviderType | null;
   keyStats: KeyStats;
+  usageDetails: UsageDetail[];
   statusBarCache: Map<string, AuthFileStatusBarData>;
   onShowModels: (file: AuthFileItem) => void;
   onDownload: (name: string) => void;
@@ -59,6 +68,38 @@ const resolveQuotaType = (file: AuthFileItem): QuotaProviderType | null => {
   return provider as QuotaProviderType;
 };
 
+const readTextValue = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+const readNumberValue = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+};
+
+const readDateLabel = (value: unknown): string => {
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return new Date(parsed).toLocaleString();
+    return value.trim();
+  }
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    const ms = value < 1e12 ? value * 1000 : value;
+    return new Date(ms).toLocaleString();
+  }
+  return '';
+};
+
+const formatLatencyLabel = (value: unknown): string => {
+  const ms = readNumberValue(value);
+  if (ms == null || ms <= 0) return '';
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  return `${(ms / 60_000).toFixed(1)} min`;
+};
+
 export function AuthFileCard(props: AuthFileCardProps) {
   const { t } = useTranslation();
   const {
@@ -71,6 +112,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
     statusUpdating,
     quotaFilterType,
     keyStats,
+    usageDetails,
     statusBarCache,
     onShowModels,
     onDownload,
@@ -116,6 +158,27 @@ export function AuthFileCard(props: AuthFileCardProps) {
 
   const priorityValue = parsePriorityValue(file.priority ?? file['priority']);
   const noteValue = typeof file.note === 'string' ? file.note.trim() : '';
+  const healthSummary = (file['health_summary'] ?? file.healthSummary ?? null) as Record<
+    string,
+    unknown
+  > | null;
+  const maskedAPIKey = readTextValue(file['masked_api_key'] ?? file.maskedApiKey);
+  const baseURL = readTextValue(file['base_url'] ?? file.baseUrl);
+  const slowSuccessCount = useMemo(() => {
+    const authIndex = authIndexKey;
+    const fileName = normalizeUsageSourceId(file.name ?? '');
+    const fileNameWithoutExt = normalizeUsageSourceId((file.name ?? '').replace(/\.[^/.]+$/, ''));
+    return usageDetails.reduce((count, detail) => {
+      const detailAuthIndex = normalizeAuthIndex(detail.auth_index);
+      const byAuthIndex = Boolean(authIndex && detailAuthIndex === authIndex);
+      const bySource =
+        detail.source === fileName ||
+        (fileNameWithoutExt.length > 0 && detail.source === fileNameWithoutExt);
+      if (!byAuthIndex && !bySource) return count;
+      return count + (isSlowUsageDetail(detail) ? 1 : 0);
+    }, 0);
+  }, [authIndexKey, file.name, usageDetails]);
+  const slowSuccessRate = fileStats.success > 0 ? (slowSuccessCount / fileStats.success) * 100 : 0;
   const stateLabel = isRuntimeOnly
     ? t('auth_files.type_virtual') || '虚拟认证文件'
     : file.disabled
@@ -231,6 +294,15 @@ export function AuthFileCard(props: AuthFileCardProps) {
                 <span className={styles.statLabel}>{t('stats.failure')}</span>
                 <span className={styles.statValue}>{fileStats.failure}</span>
               </div>
+              <div className={`${styles.statPill} ${styles.statWarning}`}>
+                <span className={styles.statLabel}>
+                  {t('auth_files.slow_requests_label', { defaultValue: '慢成功' })}
+                </span>
+                <span className={styles.statValue}>
+                  {slowSuccessCount}
+                  {!compact && fileStats.success > 0 ? ` · ${slowSuccessRate.toFixed(1)}%` : ''}
+                </span>
+              </div>
             </div>
 
             <div className={`${styles.statusPanel} ${compact ? styles.statusPanelCompact : ''}`}>
@@ -239,6 +311,243 @@ export function AuthFileCard(props: AuthFileCardProps) {
               </div>
               <ProviderStatusBar statusData={statusData} styles={styles} />
             </div>
+
+            {healthSummary && (
+              <div className={styles.healthSummaryPanel}>
+                <div className={styles.healthSummaryRow}>
+                  {readTextValue(healthSummary.model) && (
+                    <span className={styles.healthBadge}>
+                      {t('auth_files.health_model_label', { defaultValue: '模型' })}:{' '}
+                      {readTextValue(healthSummary.model)}
+                    </span>
+                  )}
+                  {healthSummary.degraded === true && (
+                    <span className={`${styles.healthBadge} ${styles.healthBadgeDanger}`}>
+                      {t('auth_files.health_degraded_label', { defaultValue: '已降级' })}
+                    </span>
+                  )}
+                  {healthSummary.last_probe_slow === true && healthSummary.degraded !== true && (
+                    <span className={`${styles.healthBadge} ${styles.healthBadgeWarn}`}>
+                      {t('auth_files.health_probe_slow_label', { defaultValue: '探测偏慢' })}
+                    </span>
+                  )}
+                  {healthSummary.last_canary_slow === true && (
+                    <span className={`${styles.healthBadge} ${styles.healthBadgeWarn}`}>
+                      {t('auth_files.health_canary_slow_label', { defaultValue: '回答偏慢' })}
+                    </span>
+                  )}
+                </div>
+                <div className={styles.healthMetaGrid}>
+                  {maskedAPIKey && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_key_label', { defaultValue: '密钥' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>{maskedAPIKey}</span>
+                    </div>
+                  )}
+                  {baseURL && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_base_url_label', { defaultValue: '地址' })}
+                      </span>
+                      <span className={styles.healthMetaValue} title={baseURL}>
+                        {baseURL}
+                      </span>
+                    </div>
+                  )}
+                  {formatLatencyLabel(
+                    healthSummary.last_probe_latency_ms ?? healthSummary.lastProbeLatencyMs
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_probe_latency_label', { defaultValue: '探测延迟' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {formatLatencyLabel(
+                          healthSummary.last_probe_latency_ms ?? healthSummary.lastProbeLatencyMs
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {formatLatencyLabel(
+                    healthSummary.last_first_activity_ms ?? healthSummary.lastFirstActivityMs
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_first_activity_label', { defaultValue: '首包' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {formatLatencyLabel(
+                          healthSummary.last_first_activity_ms ?? healthSummary.lastFirstActivityMs
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {formatLatencyLabel(
+                    healthSummary.last_completed_ms ?? healthSummary.lastCompletedMs
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_completed_label', { defaultValue: '完成' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {formatLatencyLabel(
+                          healthSummary.last_completed_ms ?? healthSummary.lastCompletedMs
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {readDateLabel(
+                    healthSummary.next_retry_after ?? healthSummary.nextRetryAfter
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_retry_after_label', { defaultValue: '冷却到期' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readDateLabel(
+                          healthSummary.next_retry_after ?? healthSummary.nextRetryAfter
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {readDateLabel(healthSummary.last_probe_at ?? healthSummary.lastProbeAt) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_probe_at_label', { defaultValue: '最近探测' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readDateLabel(healthSummary.last_probe_at ?? healthSummary.lastProbeAt)}
+                      </span>
+                    </div>
+                  )}
+                  {formatLatencyLabel(
+                    healthSummary.last_canary_latency_ms ?? healthSummary.lastCanaryLatencyMs
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_canary_latency_label', { defaultValue: '回答延迟' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {formatLatencyLabel(
+                          healthSummary.last_canary_latency_ms ?? healthSummary.lastCanaryLatencyMs
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {readDateLabel(healthSummary.last_canary_at ?? healthSummary.lastCanaryAt) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_canary_at_label', { defaultValue: '最近回答探测' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readDateLabel(
+                          healthSummary.last_canary_at ?? healthSummary.lastCanaryAt
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {readDateLabel(healthSummary.last_switch_at ?? healthSummary.lastSwitchAt) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_switch_at_label', { defaultValue: '切换时间' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readDateLabel(healthSummary.last_switch_at ?? healthSummary.lastSwitchAt)}
+                      </span>
+                    </div>
+                  )}
+                  {readTextValue(
+                    healthSummary.last_switch_to_auth_index ?? healthSummary.lastSwitchToAuthIndex
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_switch_label', { defaultValue: '切换到' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readTextValue(
+                          healthSummary.last_switch_to_provider ??
+                            healthSummary.lastSwitchToProvider
+                        )}
+                        {readTextValue(
+                          healthSummary.last_switch_to_auth_index ??
+                            healthSummary.lastSwitchToAuthIndex
+                        )
+                          ? ` / ${readTextValue(
+                              healthSummary.last_switch_to_auth_index ??
+                                healthSummary.lastSwitchToAuthIndex
+                            )}`
+                          : ''}
+                      </span>
+                    </div>
+                  )}
+                  {readTextValue(
+                    healthSummary.last_switch_to_masked_api_key ??
+                      healthSummary.lastSwitchToMaskedApiKey
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_switch_key_label', { defaultValue: '切换后密钥' })}
+                      </span>
+                      <span className={styles.healthMetaValue}>
+                        {readTextValue(
+                          healthSummary.last_switch_to_masked_api_key ??
+                            healthSummary.lastSwitchToMaskedApiKey
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {readTextValue(
+                    healthSummary.last_switch_to_base_url ?? healthSummary.lastSwitchToBaseUrl
+                  ) && (
+                    <div className={styles.healthMetaItem}>
+                      <span className={styles.healthMetaLabel}>
+                        {t('auth_files.health_last_switch_base_url_label', {
+                          defaultValue: '切换后地址',
+                        })}
+                      </span>
+                      <span
+                        className={styles.healthMetaValue}
+                        title={readTextValue(
+                          healthSummary.last_switch_to_base_url ??
+                            healthSummary.lastSwitchToBaseUrl
+                        )}
+                      >
+                        {readTextValue(
+                          healthSummary.last_switch_to_base_url ??
+                            healthSummary.lastSwitchToBaseUrl
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {readTextValue(healthSummary.last_probe_error ?? healthSummary.lastProbeError) && (
+                  <div className={styles.healthProbeError}>
+                    <IconInfo className={styles.messageIcon} size={14} />
+                    <span>
+                      {readTextValue(
+                        healthSummary.last_probe_error ?? healthSummary.lastProbeError
+                      )}
+                    </span>
+                  </div>
+                )}
+                {readTextValue(healthSummary.last_canary_error ?? healthSummary.lastCanaryError) && (
+                  <div className={styles.healthProbeError}>
+                    <IconInfo className={styles.messageIcon} size={14} />
+                    <span>
+                      {t('auth_files.health_canary_error_label', {
+                        defaultValue: '回答探测错误',
+                      })}
+                      :{' '}
+                      {readTextValue(
+                        healthSummary.last_canary_error ?? healthSummary.lastCanaryError
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {showQuotaLayout && quotaType && (
               <AuthFileQuotaSection

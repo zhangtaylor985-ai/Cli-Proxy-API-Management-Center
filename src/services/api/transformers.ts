@@ -136,6 +136,16 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
   if (prefix) config.prefix = prefix;
   const baseUrl = record ? (record['base-url'] ?? record.baseUrl) : undefined;
   const proxyUrl = record ? (record['proxy-url'] ?? record.proxyUrl) : undefined;
+  const probeMode = record?.['probe-mode'] ?? record?.probeMode ?? record?.['probe_mode'];
+  const probePath = record?.['probe-path'] ?? record?.probePath ?? record?.['probe_path'];
+  const canaryEnabled =
+    record?.['canary-enabled'] ?? record?.canaryEnabled ?? record?.['canary_enabled'];
+  const canaryPrompt =
+    record?.['canary-prompt'] ?? record?.canaryPrompt ?? record?.['canary_prompt'];
+  const canaryIntervalSeconds =
+    record?.['canary-interval-seconds'] ??
+    record?.canaryIntervalSeconds ??
+    record?.['canary_interval_seconds'];
   const websockets = normalizeBoolean(record?.websockets);
   if (priority !== undefined) {
     const parsed = Number(priority);
@@ -148,6 +158,14 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
   if (opusBaseOnly !== undefined) config.opusBaseOnly = normalizeBoolean(opusBaseOnly);
   if (baseUrl) config.baseUrl = String(baseUrl);
   if (proxyUrl) config.proxyUrl = String(proxyUrl);
+  if (probeMode) config.probeMode = String(probeMode).trim();
+  if (probePath) config.probePath = String(probePath).trim();
+  if (canaryEnabled !== undefined) config.canaryEnabled = normalizeBoolean(canaryEnabled);
+  if (canaryPrompt) config.canaryPrompt = String(canaryPrompt).trim();
+  if (canaryIntervalSeconds !== undefined) {
+    const parsed = Number(canaryIntervalSeconds);
+    if (Number.isFinite(parsed)) config.canaryIntervalSeconds = parsed;
+  }
   if (websockets !== undefined) config.websockets = websockets;
   const headers = normalizeHeaders(record?.headers);
   if (headers) config.headers = headers;
@@ -177,7 +195,25 @@ const normalizeGeminiKeyConfig = (item: unknown): GeminiKeyConfig | null => {
   const prefix = normalizePrefix(record?.prefix ?? record?.['prefix']);
   if (prefix) config.prefix = prefix;
   const baseUrl = record ? (record['base-url'] ?? record.baseUrl ?? record['base_url']) : undefined;
+  const probeMode = record?.['probe-mode'] ?? record?.probeMode ?? record?.['probe_mode'];
+  const probePath = record?.['probe-path'] ?? record?.probePath ?? record?.['probe_path'];
+  const canaryEnabled =
+    record?.['canary-enabled'] ?? record?.canaryEnabled ?? record?.['canary_enabled'];
+  const canaryPrompt =
+    record?.['canary-prompt'] ?? record?.canaryPrompt ?? record?.['canary_prompt'];
+  const canaryIntervalSeconds =
+    record?.['canary-interval-seconds'] ??
+    record?.canaryIntervalSeconds ??
+    record?.['canary_interval_seconds'];
   if (baseUrl) config.baseUrl = String(baseUrl);
+  if (probeMode) config.probeMode = String(probeMode).trim();
+  if (probePath) config.probePath = String(probePath).trim();
+  if (canaryEnabled !== undefined) config.canaryEnabled = normalizeBoolean(canaryEnabled);
+  if (canaryPrompt) config.canaryPrompt = String(canaryPrompt).trim();
+  if (canaryIntervalSeconds !== undefined) {
+    const parsed = Number(canaryIntervalSeconds);
+    if (Number.isFinite(parsed)) config.canaryIntervalSeconds = parsed;
+  }
   const headers = normalizeHeaders(record?.headers);
   if (headers) config.headers = headers;
   const excludedModels = normalizeExcludedModels(
@@ -208,6 +244,16 @@ const normalizeOpenAIProvider = (provider: unknown): OpenAIProviderConfig | null
   const models = normalizeModelAliases(provider.models);
   const priority = provider.priority ?? provider['priority'];
   const testModel = provider['test-model'] ?? provider.testModel;
+  const probeMode = provider['probe-mode'] ?? provider.probeMode ?? provider['probe_mode'];
+  const probePath = provider['probe-path'] ?? provider.probePath ?? provider['probe_path'];
+  const canaryEnabled =
+    provider['canary-enabled'] ?? provider.canaryEnabled ?? provider['canary_enabled'];
+  const canaryPrompt =
+    provider['canary-prompt'] ?? provider.canaryPrompt ?? provider['canary_prompt'];
+  const canaryIntervalSeconds =
+    provider['canary-interval-seconds'] ??
+    provider.canaryIntervalSeconds ??
+    provider['canary_interval_seconds'];
 
   const result: OpenAIProviderConfig = {
     name: String(name),
@@ -221,6 +267,14 @@ const normalizeOpenAIProvider = (provider: unknown): OpenAIProviderConfig | null
   if (models.length) result.models = models;
   if (priority !== undefined) result.priority = Number(priority);
   if (testModel) result.testModel = String(testModel);
+  if (probeMode) result.probeMode = String(probeMode).trim();
+  if (probePath) result.probePath = String(probePath).trim();
+  if (canaryEnabled !== undefined) result.canaryEnabled = normalizeBoolean(canaryEnabled);
+  if (canaryPrompt) result.canaryPrompt = String(canaryPrompt).trim();
+  if (canaryIntervalSeconds !== undefined) {
+    const parsed = Number(canaryIntervalSeconds);
+    if (Number.isFinite(parsed)) result.canaryIntervalSeconds = parsed;
+  }
   return result;
 };
 
