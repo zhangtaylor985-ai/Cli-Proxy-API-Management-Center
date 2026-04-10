@@ -37,6 +37,7 @@ export interface ProviderKeyConfig {
   apiKey: string;
   priority?: number;
   fastRecovery?: boolean;
+  opusBaseOnly?: boolean;
   prefix?: string;
   baseUrl?: string;
   websockets?: boolean;

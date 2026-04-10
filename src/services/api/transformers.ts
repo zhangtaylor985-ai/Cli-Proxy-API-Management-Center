@@ -127,7 +127,10 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
 
   const config: ProviderKeyConfig = { apiKey: trimmed };
   const priority = record?.priority ?? record?.['priority'];
-  const fastRecovery = record?.['fast-recovery'] ?? record?.fastRecovery ?? record?.['fast_recovery'];
+  const fastRecovery =
+    record?.['fast-recovery'] ?? record?.fastRecovery ?? record?.['fast_recovery'];
+  const opusBaseOnly =
+    record?.['opus-base-only'] ?? record?.opusBaseOnly ?? record?.['opus_base_only'];
   const prefix = normalizePrefix(record?.prefix ?? record?.['prefix']);
   if (prefix) config.prefix = prefix;
   const baseUrl = record ? (record['base-url'] ?? record.baseUrl) : undefined;
@@ -140,6 +143,7 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
     }
   }
   if (fastRecovery !== undefined) config.fastRecovery = normalizeBoolean(fastRecovery);
+  if (opusBaseOnly !== undefined) config.opusBaseOnly = normalizeBoolean(opusBaseOnly);
   if (baseUrl) config.baseUrl = String(baseUrl);
   if (proxyUrl) config.proxyUrl = String(proxyUrl);
   if (websockets !== undefined) config.websockets = websockets;
