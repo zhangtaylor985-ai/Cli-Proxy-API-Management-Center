@@ -60,6 +60,12 @@ export const configApi = {
     apiClient.put('/claude-to-gpt-target-family', { value: family }),
 
   /**
+   * Claude 模型全局转 GPT 默认推理强度
+   */
+  updateClaudeToGptReasoningEffort: (effort: string) =>
+    apiClient.put('/claude-to-gpt-reasoning-effort', { value: effort }),
+
+  /**
    * 默认禁用 Claude Opus 1M
    */
   updateDisableClaudeOpus1M: (enabled: boolean) =>

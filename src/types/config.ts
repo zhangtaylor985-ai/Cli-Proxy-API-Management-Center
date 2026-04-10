@@ -18,6 +18,7 @@ export interface Config {
   claudeStyleEnabled?: boolean;
   claudeStylePrompt?: string;
   claudeToGptTargetFamily?: string;
+  claudeToGptReasoningEffort?: string;
   disableClaudeOpus1M?: boolean;
   claudeCodeOnlyEnabled?: boolean;
   anthropicBaseUrl?: string;
@@ -49,6 +50,7 @@ export type RawConfigSection =
   | 'claude-style-enabled'
   | 'claude-style-prompt'
   | 'claude-to-gpt-target-family'
+  | 'claude-to-gpt-reasoning-effort'
   | 'disable-claude-opus-1m'
   | 'claude-code-only-enabled'
   | 'anthropic-base-url'

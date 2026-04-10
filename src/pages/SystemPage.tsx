@@ -48,13 +48,11 @@ const MODEL_CATEGORY_ICONS: Record<string, string | { light: string; dark: strin
   minimax: iconMinimax,
 };
 
-const DEFAULT_CLAUDE_GPT_TARGET_FAMILY = '';
-const EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY = 'gpt-5.4';
-const CLAUDE_GPT_TARGET_FAMILY_OPTIONS = [
-  { label: '默认（gpt-5.4）', value: DEFAULT_CLAUDE_GPT_TARGET_FAMILY },
-  { label: 'gpt-5.2', value: 'gpt-5.2' },
-  { label: 'gpt-5.4', value: 'gpt-5.4' },
-  { label: 'gpt-5.3-codex', value: 'gpt-5.3-codex' },
+const DEFAULT_CLAUDE_GPT_REASONING_EFFORT = 'high';
+const CLAUDE_GPT_REASONING_EFFORT_OPTIONS = [
+  { label: 'Low', value: 'low' },
+  { label: 'Medium', value: 'medium' },
+  { label: 'High', value: 'high' },
 ] as const;
 
 export function SystemPage() {
@@ -84,7 +82,7 @@ export function SystemPage() {
   const [claudeStyleSaving, setClaudeStyleSaving] = useState(false);
   const [claudeStylePromptSaving, setClaudeStylePromptSaving] = useState(false);
   const [claudeStylePromptDraft, setClaudeStylePromptDraft] = useState('');
-  const [claudeRoutingTargetSaving, setClaudeRoutingTargetSaving] = useState(false);
+  const [claudeReasoningEffortSaving, setClaudeReasoningEffortSaving] = useState(false);
   const [claudeOpus1MSaving, setClaudeOpus1MSaving] = useState(false);
   const [claudeCodeOnlySaving, setClaudeCodeOnlySaving] = useState(false);
 
@@ -101,9 +99,8 @@ export function SystemPage() {
   const claudeToGptRoutingEnabled = config?.claudeToGptRoutingEnabled ?? false;
   const claudeStyleEnabled = config?.claudeStyleEnabled ?? false;
   const claudeStylePrompt = config?.claudeStylePrompt ?? '';
-  const claudeToGptTargetFamily = config?.claudeToGptTargetFamily?.trim() ?? '';
-  const effectiveClaudeToGptTargetFamily =
-    claudeToGptTargetFamily || EFFECTIVE_DEFAULT_CLAUDE_GPT_TARGET_FAMILY;
+  const claudeToGptReasoningEffort =
+    config?.claudeToGptReasoningEffort?.trim().toLowerCase() || DEFAULT_CLAUDE_GPT_REASONING_EFFORT;
   const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
   const claudeCodeOnlyEnabled = config?.claudeCodeOnlyEnabled ?? true;
   const requestLogDirty = requestLogDraft !== requestLogEnabled;
@@ -115,8 +112,8 @@ export function SystemPage() {
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeStyleSaving;
   const canEditClaudeStylePrompt =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeStylePromptSaving;
-  const canEditClaudeRoutingTarget =
-    auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingTargetSaving;
+  const canEditClaudeReasoningEffort =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeReasoningEffortSaving;
   const canEditClaudeOpus1M =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeOpus1MSaving;
   const canEditClaudeCodeOnly =
@@ -327,32 +324,32 @@ export function SystemPage() {
     }
   };
 
-  const handleClaudeRoutingTargetFamilyChange = async (family: string) => {
+  const handleClaudeReasoningEffortChange = async (effort: string) => {
     if (!config) return;
 
-    const previous = claudeToGptTargetFamily;
-    setClaudeRoutingTargetSaving(true);
-    updateConfigValue('claude-to-gpt-target-family', family);
+    const previous = claudeToGptReasoningEffort;
+    setClaudeReasoningEffortSaving(true);
+    updateConfigValue('claude-to-gpt-reasoning-effort', effort);
 
     try {
-      await configApi.updateClaudeToGptTargetFamily(family);
-      clearCache('claude-to-gpt-target-family');
+      await configApi.updateClaudeToGptReasoningEffort(effort);
+      clearCache('claude-to-gpt-reasoning-effort');
       showNotification(
-        t('notification.claude_to_gpt_target_family_updated', {
-          defaultValue: 'Claude 全局转 GPT 默认目标模型已更新',
+        t('notification.claude_to_gpt_reasoning_effort_updated', {
+          defaultValue: 'Claude 全局转 GPT 推理强度已更新',
         }),
         'success'
       );
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-      updateConfigValue('claude-to-gpt-target-family', previous);
+      updateConfigValue('claude-to-gpt-reasoning-effort', previous);
       showNotification(
         `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
         'error'
       );
     } finally {
-      setClaudeRoutingTargetSaving(false);
+      setClaudeReasoningEffortSaving(false);
     }
   };
 
@@ -678,8 +675,7 @@ export function SystemPage() {
           <p className={styles.sectionDescription}>
             {t('system_info.claude_to_gpt_desc', {
               defaultValue:
-                '开启后，所有客户端 API Key 发起的 Claude 模型请求都会默认改走 GPT。Opus 默认转 {{family}}(high)，其他 Claude 默认转 {{family}}(medium)。',
-              family: effectiveClaudeToGptTargetFamily,
+                '开启后，所有客户端 API Key 发起的 Claude 模型请求都会默认改走 GPT。固定映射为：Claude Opus -> GPT 5.4，Claude Sonnet/其他 Claude -> GPT 5.3 Colossus（gpt-5.3-codex）；推理强度由下面的全局设置统一控制。',
             })}
           </p>
           <ToggleSwitch
@@ -696,31 +692,56 @@ export function SystemPage() {
           <div className={styles.selectRow}>
             <div className={styles.selectLabelBlock}>
               <div className={styles.selectLabel}>
-                {t('system_info.claude_to_gpt_target_family_label', {
-                  defaultValue: '默认目标模型',
+                {t('system_info.claude_to_gpt_mapping_label', {
+                  defaultValue: '默认映射策略',
                 })}
               </div>
               <div className={styles.selectHint}>
-                {t('system_info.claude_to_gpt_target_family_hint', {
+                {t('system_info.claude_to_gpt_mapping_hint', {
                   defaultValue:
-                    '用于全局 Claude 转 GPT 的默认目标族；单个 API Key 如已配置自己的目标模型，将优先覆盖这里。',
+                    'Claude Opus 固定映射到 gpt-5.4；Claude Sonnet 与其他 Claude 固定映射到 GPT 5.3 Colossus（gpt-5.3-codex）。',
+                })}
+              </div>
+            </div>
+            <div className={styles.selectWrap}>
+              <input
+                className={styles.select}
+                value="Opus -> gpt-5.4, Sonnet -> gpt-5.3-codex"
+                disabled
+                aria-label={t('system_info.claude_to_gpt_mapping_label', {
+                  defaultValue: '默认映射策略',
+                })}
+              />
+            </div>
+          </div>
+          <div className={styles.selectRow}>
+            <div className={styles.selectLabelBlock}>
+              <div className={styles.selectLabel}>
+                {t('system_info.claude_to_gpt_reasoning_effort_label', {
+                  defaultValue: '默认推理强度',
+                })}
+              </div>
+              <div className={styles.selectHint}>
+                {t('system_info.claude_to_gpt_reasoning_effort_hint', {
+                  defaultValue:
+                    '用于全局 Claude 转 GPT 默认映射的 reasoning effort。默认 High；内建 web search 请求仍会按现有兼容策略自动降到 medium。',
                 })}
               </div>
             </div>
             <div className={styles.selectWrap}>
               <select
                 className={styles.select}
-                value={claudeToGptTargetFamily}
-                disabled={!canEditClaudeRoutingTarget}
+                value={claudeToGptReasoningEffort}
+                disabled={!canEditClaudeReasoningEffort}
                 onChange={(e) => {
-                  void handleClaudeRoutingTargetFamilyChange(e.target.value);
+                  void handleClaudeReasoningEffortChange(e.target.value);
                 }}
-                aria-label={t('system_info.claude_to_gpt_target_family_label', {
-                  defaultValue: '默认目标模型',
+                aria-label={t('system_info.claude_to_gpt_reasoning_effort_label', {
+                  defaultValue: '默认推理强度',
                 })}
               >
-                {CLAUDE_GPT_TARGET_FAMILY_OPTIONS.map((option) => (
-                  <option key={option.label} value={option.value}>
+                {CLAUDE_GPT_REASONING_EFFORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}

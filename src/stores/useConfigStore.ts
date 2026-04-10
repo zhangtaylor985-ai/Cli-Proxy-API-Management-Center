@@ -40,6 +40,7 @@ const SECTION_KEYS: RawConfigSection[] = [
   'claude-style-enabled',
   'claude-style-prompt',
   'claude-to-gpt-target-family',
+  'claude-to-gpt-reasoning-effort',
   'disable-claude-opus-1m',
   'claude-code-only-enabled',
   'request-retry',
@@ -76,6 +77,8 @@ const extractSectionValue = (config: Config | null, section?: RawConfigSection) 
       return config.claudeStylePrompt;
     case 'claude-to-gpt-target-family':
       return config.claudeToGptTargetFamily;
+    case 'claude-to-gpt-reasoning-effort':
+      return config.claudeToGptReasoningEffort;
     case 'disable-claude-opus-1m':
       return config.disableClaudeOpus1M;
     case 'claude-code-only-enabled':
@@ -229,6 +232,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           break;
         case 'claude-to-gpt-target-family':
           nextConfig.claudeToGptTargetFamily = value as Config['claudeToGptTargetFamily'];
+          break;
+        case 'claude-to-gpt-reasoning-effort':
+          nextConfig.claudeToGptReasoningEffort = value as Config['claudeToGptReasoningEffort'];
           break;
         case 'disable-claude-opus-1m':
           nextConfig.disableClaudeOpus1M = value as Config['disableClaudeOpus1M'];

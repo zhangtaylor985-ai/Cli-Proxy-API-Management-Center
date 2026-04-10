@@ -354,6 +354,14 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
       : claudeToGptTargetFamily === undefined || claudeToGptTargetFamily === null
         ? undefined
         : String(claudeToGptTargetFamily);
+  const claudeToGptReasoningEffort =
+    raw['claude-to-gpt-reasoning-effort'] ?? raw.claudeToGptReasoningEffort;
+  config.claudeToGptReasoningEffort =
+    typeof claudeToGptReasoningEffort === 'string'
+      ? claudeToGptReasoningEffort
+      : claudeToGptReasoningEffort === undefined || claudeToGptReasoningEffort === null
+        ? undefined
+        : String(claudeToGptReasoningEffort);
   config.disableClaudeOpus1M = normalizeBoolean(
     raw['disable-claude-opus-1m'] ?? raw.disableClaudeOpus1M
   );
