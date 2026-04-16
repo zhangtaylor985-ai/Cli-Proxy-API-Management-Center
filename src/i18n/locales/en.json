@@ -203,6 +203,12 @@
     "export_file_count": "{{count}} files",
     "copy_export_path": "Copy Export Path",
     "copy_export_path_success": "Export path copied",
+    "recording_toggle_label": "Trajectory Capture",
+    "recording_enabled": "On",
+    "recording_disabled": "Off",
+    "recording_status_on": "New requests and responses will continue to be written into the session trajectory database.",
+    "recording_status_off": "New requests and responses will stop being written into the session trajectory database.",
+    "recording_setting_updated": "Session trajectory capture setting updated",
     "load_sessions_failed": "Failed to load sessions",
     "load_session_detail_failed": "Failed to load session details"
   },

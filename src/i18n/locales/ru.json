@@ -203,6 +203,12 @@
     "export_file_count": "{{count}} файлов",
     "copy_export_path": "Копировать путь",
     "copy_export_path_success": "Путь экспорта скопирован",
+    "recording_toggle_label": "Запись траектории",
+    "recording_enabled": "Вкл",
+    "recording_disabled": "Выкл",
+    "recording_status_on": "Новые запросы и ответы будут продолжать записываться в базу траекторий сессий.",
+    "recording_status_off": "Новые запросы и ответы больше не будут записываться в базу траекторий сессий.",
+    "recording_setting_updated": "Настройка записи траекторий сессий обновлена",
     "load_sessions_failed": "Не удалось загрузить список сессий",
     "load_session_detail_failed": "Не удалось загрузить детали сессии"
   },

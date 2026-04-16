@@ -465,6 +465,9 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
     raw['usage-statistics-enabled'] ?? raw.usageStatisticsEnabled
   );
   config.requestLog = normalizeBoolean(raw['request-log'] ?? raw.requestLog);
+  config.sessionTrajectoryEnabled = normalizeBoolean(
+    raw['session-trajectory-enabled'] ?? raw.sessionTrajectoryEnabled ?? true
+  );
   config.loggingToFile = normalizeBoolean(raw['logging-to-file'] ?? raw.loggingToFile);
   const logsMaxTotalSizeMb = raw['logs-max-total-size-mb'] ?? raw.logsMaxTotalSizeMb;
   if (typeof logsMaxTotalSizeMb === 'number' && Number.isFinite(logsMaxTotalSizeMb)) {

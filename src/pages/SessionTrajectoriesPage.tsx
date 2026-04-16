@@ -8,7 +8,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
-import { useAuthStore, useNotificationStore } from '@/stores';
+import { useAuthStore, useConfigStore, useNotificationStore } from '@/stores';
+import { configApi } from '@/services/api';
 import {
   sessionTrajectoriesApi,
   type SessionTrajectoryExportResult,
@@ -99,7 +100,9 @@ const prettyJson = (value: unknown) => {
 };
 
 const statusClassName = (status?: string | null) => {
-  const normalized = String(status || '').trim().toLowerCase();
+  const normalized = String(status || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'success') return `${styles.statusBadge} ${styles.statusSuccess}`;
   if (normalized === 'error') return `${styles.statusBadge} ${styles.statusError}`;
   if (normalized === 'active') return `${styles.statusBadge} ${styles.statusActive}`;
@@ -118,6 +121,9 @@ export function SessionTrajectoriesPage() {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
   const connectionStatus = useAuthStore((state) => state.connectionStatus);
+  const config = useConfigStore((state) => state.config);
+  const updateConfigValue = useConfigStore((state) => state.updateConfigValue);
+  const clearCache = useConfigStore((state) => state.clearCache);
 
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FiltersState>(DEFAULT_FILTERS);
@@ -136,6 +142,7 @@ export function SessionTrajectoriesPage() {
   const [lastExportItems, setLastExportItems] = useState<SessionTrajectoryExportResult[]>([]);
   const [sessionExporting, setSessionExporting] = useState(false);
   const [bulkExporting, setBulkExporting] = useState(false);
+  const [sessionTrajectorySaving, setSessionTrajectorySaving] = useState(false);
 
   const listRequestSeq = useRef(0);
   const detailRequestSeq = useRef(0);
@@ -162,6 +169,9 @@ export function SessionTrajectoriesPage() {
       })),
     [t]
   );
+  const sessionTrajectoryEnabled = config?.sessionTrajectoryEnabled ?? true;
+  const canEditSessionTrajectory =
+    connectionStatus === 'connected' && Boolean(config) && !sessionTrajectorySaving;
 
   const loadSessions = useCallback(
     async (preferredSessionId?: string) => {
@@ -186,8 +196,12 @@ export function SessionTrajectoriesPage() {
         setSessions(items);
 
         const nextSelectedId =
-          (preferredSessionId && items.some((item) => item.session_id === preferredSessionId) && preferredSessionId) ||
-          (selectedSessionId && items.some((item) => item.session_id === selectedSessionId) && selectedSessionId) ||
+          (preferredSessionId &&
+            items.some((item) => item.session_id === preferredSessionId) &&
+            preferredSessionId) ||
+          (selectedSessionId &&
+            items.some((item) => item.session_id === selectedSessionId) &&
+            selectedSessionId) ||
           items[0]?.session_id ||
           '';
         setSelectedSessionId(nextSelectedId);
@@ -229,7 +243,10 @@ export function SessionTrajectoriesPage() {
             limit: Number.parseInt(requestLimit, 10) || 50,
             include_payloads: includePayloads,
           }),
-          sessionTrajectoriesApi.getSessionTokenRounds(normalizedId, Number.parseInt(requestLimit, 10) || 50),
+          sessionTrajectoriesApi.getSessionTokenRounds(
+            normalizedId,
+            Number.parseInt(requestLimit, 10) || 50
+          ),
         ]);
 
         if (requestId !== detailRequestSeq.current) {
@@ -246,7 +263,9 @@ export function SessionTrajectoriesPage() {
         setSelectedSession(selectedSessionFromList);
         setRequests([]);
         setTokenRounds(null);
-        setDetailError(getErrorMessage(error, t('session_trajectories.load_session_detail_failed')));
+        setDetailError(
+          getErrorMessage(error, t('session_trajectories.load_session_detail_failed'))
+        );
       } finally {
         if (requestId === detailRequestSeq.current) {
           setDetailLoading(false);
@@ -295,7 +314,10 @@ export function SessionTrajectoriesPage() {
   const handleCopy = useCallback(
     async (text: string, successMessage: string) => {
       const ok = await copyToClipboard(text);
-      showNotification(ok ? successMessage : t('session_trajectories.copy_failed'), ok ? 'success' : 'error');
+      showNotification(
+        ok ? successMessage : t('session_trajectories.copy_failed'),
+        ok ? 'success' : 'error'
+      );
     },
     [showNotification, t]
   );
@@ -335,6 +357,28 @@ export function SessionTrajectoriesPage() {
     }
   };
 
+  const handleSessionTrajectoryToggle = async (enabled: boolean) => {
+    if (!canEditSessionTrajectory) {
+      return;
+    }
+
+    const previous = sessionTrajectoryEnabled;
+    setSessionTrajectorySaving(true);
+    updateConfigValue('session-trajectory-enabled', enabled);
+
+    try {
+      await configApi.updateSessionTrajectoryEnabled(enabled);
+      clearCache('session-trajectory-enabled');
+      showNotification(t('session_trajectories.recording_setting_updated'), 'success');
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, t('notification.update_failed'));
+      updateConfigValue('session-trajectory-enabled', previous);
+      showNotification(message, 'error');
+    } finally {
+      setSessionTrajectorySaving(false);
+    }
+  };
+
   const activeSession = selectedSession ?? selectedSessionFromList;
 
   return (
@@ -345,7 +389,34 @@ export function SessionTrajectoriesPage() {
           <p className={styles.subtitle}>{t('session_trajectories.subtitle')}</p>
         </div>
         <div className={styles.headerActions}>
-          <Button variant="secondary" onClick={() => void loadSessions(selectedSessionId)} disabled={sessionsLoading}>
+          <div className={styles.captureToggleCard}>
+            <div className={styles.captureToggleText}>
+              <div className={styles.captureToggleTitle}>
+                {t('session_trajectories.recording_toggle_label')}
+              </div>
+              <div className={styles.captureToggleHint}>
+                {sessionTrajectoryEnabled
+                  ? t('session_trajectories.recording_status_on')
+                  : t('session_trajectories.recording_status_off')}
+              </div>
+            </div>
+            <ToggleSwitch
+              checked={sessionTrajectoryEnabled}
+              onChange={(value) => void handleSessionTrajectoryToggle(value)}
+              label={
+                sessionTrajectoryEnabled
+                  ? t('session_trajectories.recording_enabled')
+                  : t('session_trajectories.recording_disabled')
+              }
+              ariaLabel={t('session_trajectories.recording_toggle_label')}
+              disabled={!canEditSessionTrajectory}
+            />
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => void loadSessions(selectedSessionId)}
+            disabled={sessionsLoading}
+          >
             {t('session_trajectories.refresh')}
           </Button>
           <Button
@@ -415,7 +486,9 @@ export function SessionTrajectoriesPage() {
             />
           </div>
           <div className={styles.filterSpan2}>
-            <label htmlFor="session-trajectory-status">{t('session_trajectories.filter_status')}</label>
+            <label htmlFor="session-trajectory-status">
+              {t('session_trajectories.filter_status')}
+            </label>
             <Select
               id="session-trajectory-status"
               value={filters.status}
@@ -470,30 +543,47 @@ export function SessionTrajectoriesPage() {
                       <div className={styles.sessionTop}>
                         <div className={styles.sessionIdentity}>
                           <div className={styles.sessionName}>{resolveSessionLabel(session)}</div>
-                          <div className={styles.sessionSubline}>{truncateText(session.user_id, 42)}</div>
+                          <div className={styles.sessionSubline}>
+                            {truncateText(session.user_id, 42)}
+                          </div>
                         </div>
                         <span className={statusClassName(session.status)}>
                           {t(`session_trajectories.status_${session.status}`, {
-                            defaultValue: session.status || t('session_trajectories.status_unknown'),
+                            defaultValue:
+                              session.status || t('session_trajectories.status_unknown'),
                           })}
                         </span>
                       </div>
                       <div className={styles.sessionMetrics}>
                         <div className={styles.metricChip}>
-                          <div className={styles.metricLabel}>{t('session_trajectories.metric_requests')}</div>
-                          <div className={styles.metricValue}>{formatNumber(session.request_count || 0)}</div>
+                          <div className={styles.metricLabel}>
+                            {t('session_trajectories.metric_requests')}
+                          </div>
+                          <div className={styles.metricValue}>
+                            {formatNumber(session.request_count || 0)}
+                          </div>
                         </div>
                         <div className={styles.metricChip}>
-                          <div className={styles.metricLabel}>{t('session_trajectories.metric_messages')}</div>
-                          <div className={styles.metricValue}>{formatNumber(session.message_count || 0)}</div>
+                          <div className={styles.metricLabel}>
+                            {t('session_trajectories.metric_messages')}
+                          </div>
+                          <div className={styles.metricValue}>
+                            {formatNumber(session.message_count || 0)}
+                          </div>
                         </div>
                         <div className={styles.metricChip}>
-                          <div className={styles.metricLabel}>{t('session_trajectories.metric_provider')}</div>
+                          <div className={styles.metricLabel}>
+                            {t('session_trajectories.metric_provider')}
+                          </div>
                           <div className={styles.metricValue}>{session.provider || '-'}</div>
                         </div>
                         <div className={styles.metricChip}>
-                          <div className={styles.metricLabel}>{t('session_trajectories.metric_last_activity')}</div>
-                          <div className={styles.metricValue}>{formatDateTime(session.last_activity_at)}</div>
+                          <div className={styles.metricLabel}>
+                            {t('session_trajectories.metric_last_activity')}
+                          </div>
+                          <div className={styles.metricValue}>
+                            {formatDateTime(session.last_activity_at)}
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -518,14 +608,23 @@ export function SessionTrajectoriesPage() {
                 <div className={styles.detailHeroTop}>
                   <div className={styles.detailHeroMeta}>
                     <div className={styles.eyebrow}>{t('session_trajectories.detail_eyebrow')}</div>
-                    <h2 className={styles.detailTitle}>{resolveSessionLabel(activeSession ?? selectedSessionFromList!)}</h2>
-                    <div className={`${styles.detailSubline} ${styles.mono}`}>{selectedSessionId}</div>
+                    <h2 className={styles.detailTitle}>
+                      {resolveSessionLabel(activeSession ?? selectedSessionFromList!)}
+                    </h2>
+                    <div className={`${styles.detailSubline} ${styles.mono}`}>
+                      {selectedSessionId}
+                    </div>
                   </div>
                   <div className={styles.heroActions}>
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => void handleCopy(selectedSessionId, t('session_trajectories.copy_session_id_success'))}
+                      onClick={() =>
+                        void handleCopy(
+                          selectedSessionId,
+                          t('session_trajectories.copy_session_id_success')
+                        )
+                      }
                     >
                       {t('session_trajectories.copy_session_id')}
                     </Button>
@@ -542,21 +641,33 @@ export function SessionTrajectoriesPage() {
 
                 <div className={styles.statsGrid}>
                   <div className={styles.statTile}>
-                    <div className={styles.statTileLabel}>{t('session_trajectories.metric_requests')}</div>
-                    <div className={styles.statTileValue}>{formatNumber(activeSession?.request_count || 0)}</div>
+                    <div className={styles.statTileLabel}>
+                      {t('session_trajectories.metric_requests')}
+                    </div>
+                    <div className={styles.statTileValue}>
+                      {formatNumber(activeSession?.request_count || 0)}
+                    </div>
                   </div>
                   <div className={styles.statTile}>
-                    <div className={styles.statTileLabel}>{t('session_trajectories.metric_messages')}</div>
-                    <div className={styles.statTileValue}>{formatNumber(activeSession?.message_count || 0)}</div>
+                    <div className={styles.statTileLabel}>
+                      {t('session_trajectories.metric_messages')}
+                    </div>
+                    <div className={styles.statTileValue}>
+                      {formatNumber(activeSession?.message_count || 0)}
+                    </div>
                   </div>
                   <div className={styles.statTile}>
-                    <div className={styles.statTileLabel}>{t('session_trajectories.metric_total_tokens')}</div>
+                    <div className={styles.statTileLabel}>
+                      {t('session_trajectories.metric_total_tokens')}
+                    </div>
                     <div className={styles.statTileValue}>
                       {formatNumber(tokenRounds?.summary.total_tokens || 0)}
                     </div>
                   </div>
                   <div className={styles.statTile}>
-                    <div className={styles.statTileLabel}>{t('session_trajectories.metric_cached_tokens')}</div>
+                    <div className={styles.statTileLabel}>
+                      {t('session_trajectories.metric_cached_tokens')}
+                    </div>
                     <div className={styles.statTileValue}>
                       {formatNumber(tokenRounds?.summary.cached_tokens || 0)}
                     </div>
@@ -569,41 +680,63 @@ export function SessionTrajectoriesPage() {
               <Card title={t('session_trajectories.overview_title')}>
                 <div className={styles.metaGrid}>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_user_id')}</div>
-                    <div className={`${styles.metaItemValue} ${styles.mono}`}>{activeSession?.user_id || '-'}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_user_id')}
+                    </div>
+                    <div className={`${styles.metaItemValue} ${styles.mono}`}>
+                      {activeSession?.user_id || '-'}
+                    </div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_provider_session_id')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_provider_session_id')}
+                    </div>
                     <div className={`${styles.metaItemValue} ${styles.mono}`}>
                       {activeSession?.provider_session_id || '-'}
                     </div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_source')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_source')}
+                    </div>
                     <div className={styles.metaItemValue}>{activeSession?.source || '-'}</div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_call_type')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_call_type')}
+                    </div>
                     <div className={styles.metaItemValue}>{activeSession?.call_type || '-'}</div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_provider')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_provider')}
+                    </div>
                     <div className={styles.metaItemValue}>{activeSession?.provider || '-'}</div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_model_family')}</div>
-                    <div className={styles.metaItemValue}>{activeSession?.canonical_model_family || '-'}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_model_family')}
+                    </div>
+                    <div className={styles.metaItemValue}>
+                      {activeSession?.canonical_model_family || '-'}
+                    </div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_started_at')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_started_at')}
+                    </div>
                     <div className={styles.metaItemValue}>
                       {activeSession?.started_at ? formatDateTime(activeSession.started_at) : '-'}
                     </div>
                   </div>
                   <div className={styles.metaItem}>
-                    <div className={styles.metaItemLabel}>{t('session_trajectories.field_last_activity_at')}</div>
+                    <div className={styles.metaItemLabel}>
+                      {t('session_trajectories.field_last_activity_at')}
+                    </div>
                     <div className={styles.metaItemValue}>
-                      {activeSession?.last_activity_at ? formatDateTime(activeSession.last_activity_at) : '-'}
+                      {activeSession?.last_activity_at
+                        ? formatDateTime(activeSession.last_activity_at)
+                        : '-'}
                     </div>
                   </div>
                 </div>
@@ -613,7 +746,11 @@ export function SessionTrajectoriesPage() {
                 title={t('session_trajectories.token_rounds_title')}
                 extra={
                   <div className={styles.panelMeta}>
-                    <span>{t('session_trajectories.round_count', { count: tokenRounds?.summary.round_count || 0 })}</span>
+                    <span>
+                      {t('session_trajectories.round_count', {
+                        count: tokenRounds?.summary.round_count || 0,
+                      })}
+                    </span>
                     {detailLoading ? <span>{t('common.loading')}</span> : null}
                   </div>
                 }
@@ -695,12 +832,16 @@ export function SessionTrajectoriesPage() {
                           <div className={styles.requestHeader}>
                             <div className={styles.requestHeaderMain}>
                               <div className={styles.requestTitle}>
-                                {t('session_trajectories.request_title', { index: request.request_index })} · {request.model}
+                                {t('session_trajectories.request_title', {
+                                  index: request.request_index,
+                                })}{' '}
+                                · {request.model}
                               </div>
                               <div className={styles.requestMeta}>
                                 <span className={statusClassName(request.status)}>
                                   {t(`session_trajectories.status_${request.status}`, {
-                                    defaultValue: request.status || t('session_trajectories.status_unknown'),
+                                    defaultValue:
+                                      request.status || t('session_trajectories.status_unknown'),
                                   })}
                                 </span>
                                 <span className={styles.mono}>{shortId(request.request_id)}</span>
@@ -708,7 +849,11 @@ export function SessionTrajectoriesPage() {
                               </div>
                             </div>
                             {hasPayloads ? (
-                              <Button variant="secondary" size="sm" onClick={() => setRequestModal(request)}>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setRequestModal(request)}
+                              >
                                 {t('session_trajectories.view_payloads')}
                               </Button>
                             ) : null}
@@ -716,24 +861,44 @@ export function SessionTrajectoriesPage() {
 
                           <div className={styles.requestDataGrid}>
                             <div className={styles.requestDatum}>
-                              <div className={styles.requestDatumLabel}>{t('session_trajectories.field_input_tokens')}</div>
-                              <div className={styles.requestDatumValue}>{formatNumber(request.input_tokens || 0)}</div>
+                              <div className={styles.requestDatumLabel}>
+                                {t('session_trajectories.field_input_tokens')}
+                              </div>
+                              <div className={styles.requestDatumValue}>
+                                {formatNumber(request.input_tokens || 0)}
+                              </div>
                             </div>
                             <div className={styles.requestDatum}>
-                              <div className={styles.requestDatumLabel}>{t('session_trajectories.field_output_tokens')}</div>
-                              <div className={styles.requestDatumValue}>{formatNumber(request.output_tokens || 0)}</div>
+                              <div className={styles.requestDatumLabel}>
+                                {t('session_trajectories.field_output_tokens')}
+                              </div>
+                              <div className={styles.requestDatumValue}>
+                                {formatNumber(request.output_tokens || 0)}
+                              </div>
                             </div>
                             <div className={styles.requestDatum}>
-                              <div className={styles.requestDatumLabel}>{t('session_trajectories.field_reasoning_tokens')}</div>
-                              <div className={styles.requestDatumValue}>{formatNumber(request.reasoning_tokens || 0)}</div>
+                              <div className={styles.requestDatumLabel}>
+                                {t('session_trajectories.field_reasoning_tokens')}
+                              </div>
+                              <div className={styles.requestDatumValue}>
+                                {formatNumber(request.reasoning_tokens || 0)}
+                              </div>
                             </div>
                             <div className={styles.requestDatum}>
-                              <div className={styles.requestDatumLabel}>{t('session_trajectories.field_cached_tokens')}</div>
-                              <div className={styles.requestDatumValue}>{formatNumber(request.cached_tokens || 0)}</div>
+                              <div className={styles.requestDatumLabel}>
+                                {t('session_trajectories.field_cached_tokens')}
+                              </div>
+                              <div className={styles.requestDatumValue}>
+                                {formatNumber(request.cached_tokens || 0)}
+                              </div>
                             </div>
                             <div className={styles.requestDatum}>
-                              <div className={styles.requestDatumLabel}>{t('session_trajectories.field_total_tokens')}</div>
-                              <div className={styles.requestDatumValue}>{formatNumber(request.total_tokens || 0)}</div>
+                              <div className={styles.requestDatumLabel}>
+                                {t('session_trajectories.field_total_tokens')}
+                              </div>
+                              <div className={styles.requestDatumValue}>
+                                {formatNumber(request.total_tokens || 0)}
+                              </div>
                             </div>
                           </div>
                         </article>
@@ -752,18 +917,28 @@ export function SessionTrajectoriesPage() {
                 ) : (
                   <div className={styles.exportList}>
                     {lastExportItems.map((item) => (
-                      <div key={`${item.session_id}-${item.exported_at}`} className={styles.exportItem}>
+                      <div
+                        key={`${item.session_id}-${item.exported_at}`}
+                        className={styles.exportItem}
+                      >
                         <div className={styles.exportMain}>
                           <div className={styles.exportPath}>{item.export_dir}</div>
                           <div className={styles.mutedText}>
-                            {t('session_trajectories.export_file_count', { count: item.file_count })} ·{' '}
-                            {formatDateTime(item.exported_at)}
+                            {t('session_trajectories.export_file_count', {
+                              count: item.file_count,
+                            })}{' '}
+                            · {formatDateTime(item.exported_at)}
                           </div>
                         </div>
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => void handleCopy(item.export_dir, t('session_trajectories.copy_export_path_success'))}
+                          onClick={() =>
+                            void handleCopy(
+                              item.export_dir,
+                              t('session_trajectories.copy_export_path_success')
+                            )
+                          }
                         >
                           {t('session_trajectories.copy_export_path')}
                         </Button>
@@ -806,7 +981,9 @@ export function SessionTrajectoriesPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => void handleCopy(content, t('session_trajectories.copy_json_success'))}
+                      onClick={() =>
+                        void handleCopy(content, t('session_trajectories.copy_json_success'))
+                      }
                     >
                       {t('session_trajectories.copy_json')}
                     </Button>

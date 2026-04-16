@@ -47,6 +47,7 @@ const SECTION_KEYS: RawConfigSection[] = [
   'quota-exceeded',
   'usage-statistics-enabled',
   'request-log',
+  'session-trajectory-enabled',
   'logging-to-file',
   'logs-max-total-size-mb',
   'ws-auth',
@@ -91,6 +92,8 @@ const extractSectionValue = (config: Config | null, section?: RawConfigSection) 
       return config.usageStatisticsEnabled;
     case 'request-log':
       return config.requestLog;
+    case 'session-trajectory-enabled':
+      return config.sessionTrajectoryEnabled;
     case 'logging-to-file':
       return config.loggingToFile;
     case 'logs-max-total-size-mb':
@@ -253,6 +256,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           break;
         case 'request-log':
           nextConfig.requestLog = value as Config['requestLog'];
+          break;
+        case 'session-trajectory-enabled':
+          nextConfig.sessionTrajectoryEnabled = value as Config['sessionTrajectoryEnabled'];
           break;
         case 'logging-to-file':
           nextConfig.loggingToFile = value as Config['loggingToFile'];

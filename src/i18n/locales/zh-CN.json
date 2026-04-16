@@ -203,6 +203,12 @@
     "export_file_count": "{{count}} 个文件",
     "copy_export_path": "复制导出目录",
     "copy_export_path_success": "导出目录已复制",
+    "recording_toggle_label": "轨迹写库",
+    "recording_enabled": "已开启",
+    "recording_disabled": "已关闭",
+    "recording_status_on": "后续请求与响应会继续写入会话轨迹数据库。",
+    "recording_status_off": "后续请求与响应将不再写入会话轨迹数据库。",
+    "recording_setting_updated": "会话轨迹写库设置已更新",
     "load_sessions_failed": "加载会话列表失败",
     "load_session_detail_failed": "加载会话详情失败"
   },

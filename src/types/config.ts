@@ -27,6 +27,7 @@ export interface Config {
   quotaExceeded?: QuotaExceededConfig;
   usageStatisticsEnabled?: boolean;
   requestLog?: boolean;
+  sessionTrajectoryEnabled?: boolean;
   loggingToFile?: boolean;
   logsMaxTotalSizeMb?: number;
   wsAuth?: boolean;
@@ -59,6 +60,7 @@ export type RawConfigSection =
   | 'quota-exceeded'
   | 'usage-statistics-enabled'
   | 'request-log'
+  | 'session-trajectory-enabled'
   | 'logging-to-file'
   | 'logs-max-total-size-mb'
   | 'ws-auth'

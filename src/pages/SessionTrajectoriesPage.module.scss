@@ -44,6 +44,37 @@
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.captureToggleCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.captureToggleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.captureToggleTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.captureToggleHint {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .filterShell {
@@ -54,8 +85,7 @@
   border: 1px solid var(--border-color);
   background:
     radial-gradient(120% 120% at 0% 0%, rgba(139, 134, 128, 0.14), transparent 55%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
-    var(--bg-primary);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)), var(--bg-primary);
   box-shadow: var(--shadow-lg);
 }
 
@@ -169,8 +199,7 @@
 .sessionButtonActive {
   border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
   background:
-    linear-gradient(180deg, rgba(139, 134, 128, 0.12), rgba(139, 134, 128, 0.02)),
-    var(--bg-primary);
+    linear-gradient(180deg, rgba(139, 134, 128, 0.12), rgba(139, 134, 128, 0.02)), var(--bg-primary);
   box-shadow: var(--shadow-lg);
 }
 
@@ -245,8 +274,7 @@
   border: 1px solid var(--border-color);
   background:
     radial-gradient(120% 130% at 100% 0%, rgba(139, 134, 128, 0.22), transparent 52%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)),
-    var(--bg-primary);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0)), var(--bg-primary);
   box-shadow: var(--shadow-lg);
 }
 

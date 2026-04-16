@@ -107,6 +107,12 @@ export const configApi = {
   updateRequestLog: (enabled: boolean) => apiClient.put('/request-log', { value: enabled }),
 
   /**
+   * 会话轨迹写库开关
+   */
+  updateSessionTrajectoryEnabled: (enabled: boolean) =>
+    apiClient.put('/session-trajectory-enabled', { value: enabled }),
+
+  /**
    * 写日志到文件开关
    */
   updateLoggingToFile: (enabled: boolean) => apiClient.put('/logging-to-file', { value: enabled }),
