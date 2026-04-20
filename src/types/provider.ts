@@ -44,6 +44,8 @@ export interface ProviderKeyConfig {
   fastRecovery?: boolean;
   fastMode?: boolean;
   opusBaseOnly?: boolean;
+  opus47To46?: boolean;
+  probeTarget?: boolean;
   prefix?: string;
   baseUrl?: string;
   websockets?: boolean;

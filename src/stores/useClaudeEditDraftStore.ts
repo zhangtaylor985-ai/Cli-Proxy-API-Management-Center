@@ -52,6 +52,8 @@ const resolveAction = <T,>(action: SetStateAction<T>, prev: T): T =>
 
 const buildEmptyForm = (): ProviderFormState => ({
   apiKey: '',
+  opus47To46: false,
+  probeTarget: false,
   prefix: '',
   baseUrl: '',
   proxyUrl: '',

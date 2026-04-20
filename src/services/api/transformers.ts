@@ -132,6 +132,10 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
   const fastMode = record?.['fast-mode'] ?? record?.fastMode ?? record?.['fast_mode'];
   const opusBaseOnly =
     record?.['opus-base-only'] ?? record?.opusBaseOnly ?? record?.['opus_base_only'];
+  const opus47To46 =
+    record?.['opus-4-7-to-4-6'] ?? record?.opus47To46 ?? record?.['opus_4_7_to_4_6'];
+  const probeTarget =
+    record?.['probe-target'] ?? record?.probeTarget ?? record?.['probe_target'];
   const prefix = normalizePrefix(record?.prefix ?? record?.['prefix']);
   if (prefix) config.prefix = prefix;
   const baseUrl = record ? (record['base-url'] ?? record.baseUrl) : undefined;
@@ -156,6 +160,8 @@ const normalizeProviderKeyConfig = (item: unknown): ProviderKeyConfig | null => 
   if (fastRecovery !== undefined) config.fastRecovery = normalizeBoolean(fastRecovery);
   if (fastMode !== undefined) config.fastMode = normalizeBoolean(fastMode);
   if (opusBaseOnly !== undefined) config.opusBaseOnly = normalizeBoolean(opusBaseOnly);
+  if (opus47To46 !== undefined) config.opus47To46 = normalizeBoolean(opus47To46);
+  if (probeTarget !== undefined) config.probeTarget = normalizeBoolean(probeTarget);
   if (baseUrl) config.baseUrl = String(baseUrl);
   if (proxyUrl) config.proxyUrl = String(proxyUrl);
   if (probeMode) config.probeMode = String(probeMode).trim();

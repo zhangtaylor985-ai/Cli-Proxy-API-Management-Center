@@ -143,6 +143,22 @@ export function ClaudeSection({
                     <span className={styles.fieldValue}>{t('common.enabled')}</span>
                   </div>
                 ) : null}
+                {item.opus47To46 ? (
+                  <div className={styles.fieldRow}>
+                    <span className={styles.fieldLabel}>
+                      {t('ai_providers.claude_opus_47_to_46_title')}:
+                    </span>
+                    <span className={styles.fieldValue}>{t('common.enabled')}</span>
+                  </div>
+                ) : null}
+                {item.probeTarget ? (
+                  <div className={styles.fieldRow}>
+                    <span className={styles.fieldLabel}>
+                      {t('ai_providers.claude_probe_target_title')}:
+                    </span>
+                    <span className={styles.fieldValue}>{t('common.enabled')}</span>
+                  </div>
+                ) : null}
                 {item.cloak && (
                   <div className={styles.fieldRow}>
                     <span className={styles.fieldLabel}>
@@ -190,6 +206,16 @@ export function ClaudeSection({
                 {item.opusBaseOnly ? (
                   <div className="status-badge info" style={{ marginTop: 8, marginBottom: 0 }}>
                     {t('ai_providers.claude_opus_base_only_badge')}
+                  </div>
+                ) : null}
+                {item.opus47To46 ? (
+                  <div className="status-badge info" style={{ marginTop: 8, marginBottom: 0 }}>
+                    {t('ai_providers.claude_opus_47_to_46_badge')}
+                  </div>
+                ) : null}
+                {item.probeTarget ? (
+                  <div className="status-badge info" style={{ marginTop: 8, marginBottom: 0 }}>
+                    {t('ai_providers.claude_probe_target_badge')}
                   </div>
                 ) : null}
                 {item.models?.length ? (

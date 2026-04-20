@@ -63,6 +63,8 @@ const serializeProviderKey = (config: ProviderKeyConfig) => {
   if (config.fastRecovery !== undefined) payload['fast-recovery'] = config.fastRecovery;
   if (config.fastMode !== undefined) payload['fast-mode'] = config.fastMode;
   if (config.opusBaseOnly !== undefined) payload['opus-base-only'] = config.opusBaseOnly;
+  if (config.opus47To46 !== undefined) payload['opus-4-7-to-4-6'] = config.opus47To46;
+  if (config.probeTarget !== undefined) payload['probe-target'] = config.probeTarget;
   if (config.prefix?.trim()) payload.prefix = config.prefix.trim();
   if (config.baseUrl) payload['base-url'] = config.baseUrl;
   if (config.probeMode?.trim()) payload['probe-mode'] = config.probeMode.trim();

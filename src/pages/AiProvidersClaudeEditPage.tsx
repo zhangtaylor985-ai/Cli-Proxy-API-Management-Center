@@ -364,6 +364,40 @@ export function AiProvidersClaudeEditPage() {
                 {t('ai_providers.claude_opus_base_only_hint')}
               </div>
             </div>
+            <div className={styles.modelConfigSection}>
+              <div className={styles.modelConfigHeader}>
+                <label className={styles.modelConfigTitle}>
+                  {t('ai_providers.claude_opus_47_to_46_title')}
+                </label>
+                <div className={styles.modelConfigToolbar}>
+                  <ToggleSwitch
+                    checked={Boolean(form.opus47To46)}
+                    onChange={(enabled) => setForm((prev) => ({ ...prev, opus47To46: enabled }))}
+                    disabled={saving || disableControls || isTesting}
+                    ariaLabel={t('ai_providers.claude_opus_47_to_46_toggle')}
+                    label={t('ai_providers.claude_opus_47_to_46_toggle')}
+                  />
+                </div>
+              </div>
+              <div className={styles.sectionHint}>{t('ai_providers.claude_opus_47_to_46_hint')}</div>
+            </div>
+            <div className={styles.modelConfigSection}>
+              <div className={styles.modelConfigHeader}>
+                <label className={styles.modelConfigTitle}>
+                  {t('ai_providers.claude_probe_target_title')}
+                </label>
+                <div className={styles.modelConfigToolbar}>
+                  <ToggleSwitch
+                    checked={Boolean(form.probeTarget)}
+                    onChange={(enabled) => setForm((prev) => ({ ...prev, probeTarget: enabled }))}
+                    disabled={saving || disableControls || isTesting}
+                    ariaLabel={t('ai_providers.claude_probe_target_toggle')}
+                    label={t('ai_providers.claude_probe_target_toggle')}
+                  />
+                </div>
+              </div>
+              <div className={styles.sectionHint}>{t('ai_providers.claude_probe_target_hint')}</div>
+            </div>
             <HeaderInputList
               entries={form.headers}
               onChange={(entries) => setForm((prev) => ({ ...prev, headers: entries }))}
