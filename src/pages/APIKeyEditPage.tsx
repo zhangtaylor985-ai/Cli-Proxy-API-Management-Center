@@ -110,9 +110,10 @@ export function APIKeyEditPage() {
   });
 
   const activeGroup = useMemo(() => {
-    const target = draft.groupId || detail?.summary.group_id || '';
+    const target = draft.groupId.trim();
+    if (!target) return null;
     return groups.find((group) => group.id === target) ?? detail?.group ?? null;
-  }, [detail?.group, detail?.summary.group_id, draft.groupId, groups]);
+  }, [detail?.group, draft.groupId, groups]);
 
   const updateDraft = useCallback(
     <K extends keyof PolicyDraft>(key: K, value: PolicyDraft[K]) => {

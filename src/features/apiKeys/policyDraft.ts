@@ -66,6 +66,7 @@ export const CODEX_CHANNEL_MODE_OPTIONS: Array<{ value: CodexChannelMode; label:
 ];
 
 export const EXPIRY_PRESET_OPTIONS = [
+  { value: 'none', label: '不过期' },
   { value: '1d', label: '1 日' },
   { value: '1w', label: '1 周' },
   { value: '1m', label: '1 月' },
@@ -96,6 +97,7 @@ export function normalizeHourInputValue(raw: string): string {
 }
 
 export function addExpiryPreset(preset: string): string {
+  if (preset === 'none') return '';
   const now = new Date();
   now.setSeconds(0, 0);
   switch (preset) {
@@ -114,6 +116,7 @@ export function addExpiryPreset(preset: string): string {
 }
 
 export function resolveExpiryPreset(value: string): string {
+  if (!value.trim()) return 'none';
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return 'custom';
   const now = new Date();
@@ -258,13 +261,12 @@ export function budgetTone(percent: number): 'Safe' | 'Warn' | 'Danger' {
 
 export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDraft {
   const groupId = policy.group_id || '';
-  const usesGroupBudget = Boolean(groupId);
   return {
     apiKey: policy.api_key || fallbackKey,
     name: policy.name || '',
     note: policy.note || '',
     createdAt: policy.created_at || '',
-    expiresAt: formatDateTimeLocal(policy.expires_at) || addExpiryPreset('1m'),
+    expiresAt: formatDateTimeLocal(policy.expires_at),
     disabled: Boolean(policy.disabled),
     groupId,
     allowClaudeFamily: policy.allow_claude_family !== false,
@@ -280,9 +282,9 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     excludedModels: linesFromList(policy.excluded_models || []),
     allowClaudeOpus46: policy.allow_claude_opus_46 !== false,
     dailyLimits: linesFromMap(policy.daily_limits || {}),
-    dailyBudgetUsd: usesGroupBudget ? '' : policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
-    weeklyBudgetUsd: usesGroupBudget ? '' : policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
-    weeklyBudgetAnchorAt: usesGroupBudget ? '' : normalizeHourInputValue(policy.weekly_budget_anchor_at),
+    dailyBudgetUsd: groupId ? '' : policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
+    weeklyBudgetUsd: groupId ? '' : policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
+    weeklyBudgetAnchorAt: normalizeHourInputValue(policy.weekly_budget_anchor_at),
     tokenPackageUsd: policy.token_package_usd ? String(policy.token_package_usd) : '',
     tokenPackageStartedAt: formatDateTimeLocal(policy.token_package_started_at),
     modelRoutingRules: JSON.stringify(policy.model_routing_rules || [], null, 2),
@@ -318,10 +320,7 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     daily_limits: mapFromLines(draft.dailyLimits),
     daily_budget_usd: usesGroupBudget ? 0 : Number(draft.dailyBudgetUsd || 0),
     weekly_budget_usd: usesGroupBudget ? 0 : Number(draft.weeklyBudgetUsd || 0),
-    weekly_budget_anchor_at:
-      usesGroupBudget || Number(draft.weeklyBudgetUsd || 0) <= 0
-        ? ''
-        : toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt),
+    weekly_budget_anchor_at: toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt),
     token_package_usd: Number(draft.tokenPackageUsd || 0),
     token_package_started_at: toIsoOrEmpty(draft.tokenPackageStartedAt),
     model_routing_rules: parseJsonArray(draft.modelRoutingRules),

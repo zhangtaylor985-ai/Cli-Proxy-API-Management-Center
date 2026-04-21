@@ -12,7 +12,6 @@ import {
   addExpiryPreset,
   formatCost,
   formatDateTime,
-  getCurrentHourInputValue,
   listFromLines,
   normalizeHourInputValue,
   resolveExpiryPreset,
@@ -48,7 +47,7 @@ export function PolicyEditorSections({
     ],
     [groups]
   );
-  const groupManagedBudget = Boolean(activeGroup);
+  const groupManagedBudget = Boolean(draft.groupId.trim());
 
   return (
     <div className={styles.editorSections}>
@@ -115,7 +114,7 @@ export function PolicyEditorSections({
                 onDraftChange('expiresAt', addExpiryPreset(value));
               }}
             />
-            <div className="hint">新增 API Key 默认有效期 1 个月。</div>
+            <div className="hint">新建 API Key 默认有效期 1 个月；也可以改成不过期。</div>
           </div>
           <Input
             label="自定义过期时间"
@@ -265,7 +264,7 @@ export function PolicyEditorSections({
             <strong>账户组预算已接管基础额度</strong>
             <span>
               该 API Key 当前归属于 {activeGroup.name}
-              。请求会先消耗账户组的日/周基础额度，再在基础额度耗尽后消耗 Token 包。
+              。请求会先消耗账户组的日/周基础额度，再在基础额度耗尽后消耗 Token 包；周期锚点仍可按当前 key 单独配置。
             </span>
           </div>
         )}
@@ -312,10 +311,10 @@ export function PolicyEditorSections({
             onBlur={(event) =>
               onDraftChange(
                 'weeklyBudgetAnchorAt',
-                normalizeHourInputValue(event.target.value) || getCurrentHourInputValue()
+                event.target.value ? normalizeHourInputValue(event.target.value) : ''
               )
             }
-            disabled={groupManagedBudget}
+            hint="优先使用周期锚点；留空时回退到创建时间。"
           />
           <Input
             label="Token 包 USD"
