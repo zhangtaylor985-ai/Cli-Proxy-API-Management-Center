@@ -91,6 +91,7 @@ export interface ApiKeyPolicyView {
   allow_claude_family: boolean;
   allow_gpt_family: boolean;
   fast_mode: boolean;
+  session_trajectory_disabled: boolean;
   codex_channel_mode: 'auto' | 'provider' | 'auth_file';
   enable_claude_models: boolean;
   claude_global_fallback_enabled: boolean;
@@ -127,6 +128,7 @@ export interface ApiKeyRecordSummaryLiteView {
   policy_family: string;
   enable_claude_models: boolean;
   fast_mode: boolean;
+  session_trajectory_disabled: boolean;
   expired: boolean;
 }
 
@@ -154,6 +156,7 @@ export interface ApiKeyRecordSummaryView {
   policy_family: string;
   enable_claude_models: boolean;
   fast_mode: boolean;
+  session_trajectory_disabled: boolean;
 }
 
 export interface ApiKeyRecordListPagination {

@@ -19,6 +19,7 @@ export type PolicyDraft = {
   allowClaudeFamily: boolean;
   allowGptFamily: boolean;
   fastMode: boolean;
+  sessionTrajectoryDisabled: boolean;
   codexChannelMode: CodexChannelMode;
   enableClaudeModels: boolean;
   claudeGlobalFallbackEnabled: boolean;
@@ -141,6 +142,7 @@ export function emptyDraft(): PolicyDraft {
     allowClaudeFamily: true,
     allowGptFamily: false,
     fastMode: false,
+    sessionTrajectoryDisabled: false,
     codexChannelMode: 'auto',
     enableClaudeModels: false,
     claudeGlobalFallbackEnabled: true,
@@ -269,6 +271,7 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     allowClaudeFamily: policy.allow_claude_family !== false,
     allowGptFamily: Boolean(policy.allow_gpt_family),
     fastMode: Boolean(policy.fast_mode),
+    sessionTrajectoryDisabled: Boolean(policy.session_trajectory_disabled),
     codexChannelMode: policy.codex_channel_mode || 'auto',
     enableClaudeModels: Boolean(policy.enable_claude_models),
     claudeGlobalFallbackEnabled: policy.claude_global_fallback_enabled !== false,
@@ -307,6 +310,7 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     allow_claude_family: draft.allowClaudeFamily,
     allow_gpt_family: draft.allowGptFamily,
     fast_mode: draft.fastMode,
+    session_trajectory_disabled: draft.sessionTrajectoryDisabled,
     codex_channel_mode: draft.codexChannelMode,
     enable_claude_models: draft.enableClaudeModels,
     claude_global_fallback_enabled: draft.claudeGlobalFallbackEnabled,

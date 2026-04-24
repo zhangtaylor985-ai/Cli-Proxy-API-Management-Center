@@ -210,6 +210,17 @@ export function PolicyEditorSections({
           </div>
           <div className={styles.toggleCard}>
             <ToggleSwitch
+              checked={!draft.sessionTrajectoryDisabled}
+              onChange={(value) => onDraftChange('sessionTrajectoryDisabled', !value)}
+              label="记录 Session 会话"
+            />
+            <p>
+              关闭后，这把 API Key 的新请求不会写入 session
+              trajectory；全局总开关仍在会话轨迹页控制。
+            </p>
+          </div>
+          <div className={styles.toggleCard}>
+            <ToggleSwitch
               checked={draft.enableClaudeModels}
               onChange={(value) => onDraftChange('enableClaudeModels', value)}
               label="允许 Claude 原生模型"
