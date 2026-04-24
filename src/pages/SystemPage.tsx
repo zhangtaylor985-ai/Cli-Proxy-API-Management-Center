@@ -49,6 +49,14 @@ const MODEL_CATEGORY_ICONS: Record<string, string | { light: string; dark: strin
 };
 
 const DEFAULT_CLAUDE_GPT_REASONING_EFFORT = 'high';
+const DEFAULT_CLAUDE_GPT_TARGET_FAMILY = '';
+const CLAUDE_GPT_TARGET_FAMILY_OPTIONS = [
+  { label: '默认 GPT-5.5', value: '' },
+  { label: 'GPT-5.5', value: 'gpt-5.5' },
+  { label: 'GPT-5.4', value: 'gpt-5.4' },
+  { label: 'GPT-5.2', value: 'gpt-5.2' },
+  { label: 'GPT-5.3 Codex', value: 'gpt-5.3-codex' },
+] as const;
 const CLAUDE_GPT_REASONING_EFFORT_OPTIONS = [
   { label: 'Low', value: 'low' },
   { label: 'Medium', value: 'medium' },
@@ -79,6 +87,7 @@ export function SystemPage() {
   const [requestLogTouched, setRequestLogTouched] = useState(false);
   const [requestLogSaving, setRequestLogSaving] = useState(false);
   const [claudeRoutingSaving, setClaudeRoutingSaving] = useState(false);
+  const [claudeTargetFamilySaving, setClaudeTargetFamilySaving] = useState(false);
   const [claudeStyleSaving, setClaudeStyleSaving] = useState(false);
   const [claudeStylePromptSaving, setClaudeStylePromptSaving] = useState(false);
   const [claudeStylePromptDraft, setClaudeStylePromptDraft] = useState('');
@@ -97,6 +106,8 @@ export function SystemPage() {
   const groupedModels = useMemo(() => classifyModels(models, { otherLabel }), [models, otherLabel]);
   const requestLogEnabled = config?.requestLog ?? false;
   const claudeToGptRoutingEnabled = config?.claudeToGptRoutingEnabled ?? false;
+  const claudeToGptTargetFamily =
+    config?.claudeToGptTargetFamily?.trim().toLowerCase() || DEFAULT_CLAUDE_GPT_TARGET_FAMILY;
   const claudeStyleEnabled = config?.claudeStyleEnabled ?? false;
   const claudeStylePrompt = config?.claudeStylePrompt ?? '';
   const claudeToGptReasoningEffort =
@@ -108,6 +119,8 @@ export function SystemPage() {
   const canEditRequestLog = auth.connectionStatus === 'connected' && Boolean(config);
   const canEditClaudeRouting =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeRoutingSaving;
+  const canEditClaudeTargetFamily =
+    auth.connectionStatus === 'connected' && Boolean(config) && !claudeTargetFamilySaving;
   const canEditClaudeStyle =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeStyleSaving;
   const canEditClaudeStylePrompt =
@@ -290,6 +303,35 @@ export function SystemPage() {
       );
     } finally {
       setClaudeStyleSaving(false);
+    }
+  };
+
+  const handleClaudeTargetFamilyChange = async (family: string) => {
+    if (!config) return;
+
+    const previous = claudeToGptTargetFamily;
+    setClaudeTargetFamilySaving(true);
+    updateConfigValue('claude-to-gpt-target-family', family);
+
+    try {
+      await configApi.updateClaudeToGptTargetFamily(family);
+      clearCache('claude-to-gpt-target-family');
+      showNotification(
+        t('notification.claude_to_gpt_target_family_updated', {
+          defaultValue: 'Claude 全局转 GPT 目标模型已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('claude-to-gpt-target-family', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setClaudeTargetFamilySaving(false);
     }
   };
 
@@ -699,19 +741,31 @@ export function SystemPage() {
               <div className={styles.selectHint}>
                 {t('system_info.claude_to_gpt_mapping_hint', {
                   defaultValue:
-                    '所有 Claude 模型默认映射到 gpt-5.5；如配置了全局 target family override，则按该配置覆盖。',
+                    '默认映射到 GPT-5.5；这里可以覆盖为 GPT-5.4 / GPT-5.2 / GPT-5.3 Codex。',
                 })}
               </div>
             </div>
             <div className={styles.selectWrap}>
-              <input
+              <select
                 className={styles.select}
-                value="Claude -> gpt-5.5"
-                disabled
+                value={claudeToGptTargetFamily}
+                disabled={!canEditClaudeTargetFamily}
+                onChange={(e) => {
+                  void handleClaudeTargetFamilyChange(e.target.value);
+                }}
                 aria-label={t('system_info.claude_to_gpt_mapping_label', {
                   defaultValue: '默认映射策略',
                 })}
-              />
+              >
+                {CLAUDE_GPT_TARGET_FAMILY_OPTIONS.map((option) => (
+                  <option key={option.value || 'default'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className={styles.selectIcon}>
+                <IconChevronDown size={16} />
+              </span>
             </div>
           </div>
           <div className={styles.selectRow}>
