@@ -93,6 +93,7 @@ export interface ApiKeyPolicyView {
   fast_mode: boolean;
   codex_channel_mode: 'auto' | 'provider' | 'auth_file';
   enable_claude_models: boolean;
+  claude_global_fallback_enabled: boolean;
   claude_usage_limit_usd: number;
   claude_gpt_target_family: string;
   enable_claude_opus_1m: boolean;
@@ -107,9 +108,6 @@ export interface ApiKeyPolicyView {
   token_package_usd: number;
   token_package_started_at: string;
   model_routing_rules: Array<Record<string, unknown>>;
-  claude_failover_enabled: boolean;
-  claude_failover_target: string;
-  claude_failover_rules: Array<Record<string, unknown>>;
 }
 
 export interface ApiKeyRecordSummaryLiteView {

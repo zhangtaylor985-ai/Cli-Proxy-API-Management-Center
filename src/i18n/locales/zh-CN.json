@@ -128,7 +128,7 @@
     "filter_provider": "Provider",
     "filter_provider_placeholder": "例如 anthropic",
     "filter_model_family": "模型家族",
-    "filter_model_family_placeholder": "例如 gpt-5.4",
+    "filter_model_family_placeholder": "例如 gpt-5.5",
     "filter_status": "状态",
     "filter_limit": "列表上限",
     "status_all": "全部状态",

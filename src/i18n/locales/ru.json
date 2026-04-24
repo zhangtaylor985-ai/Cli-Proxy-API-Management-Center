@@ -128,7 +128,7 @@
     "filter_provider": "Провайдер",
     "filter_provider_placeholder": "Например anthropic",
     "filter_model_family": "Семейство модели",
-    "filter_model_family_placeholder": "Например gpt-5.4",
+    "filter_model_family_placeholder": "Например gpt-5.5",
     "filter_status": "Статус",
     "filter_limit": "Лимит списка",
     "status_all": "Все статусы",

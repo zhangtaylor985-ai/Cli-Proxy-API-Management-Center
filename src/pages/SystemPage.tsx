@@ -675,7 +675,7 @@ export function SystemPage() {
           <p className={styles.sectionDescription}>
             {t('system_info.claude_to_gpt_desc', {
               defaultValue:
-                '开启后，所有客户端 API Key 发起的 Claude 模型请求都会默认改走 GPT。固定映射为：Claude Opus -> GPT 5.4，Claude Sonnet/其他 Claude -> GPT 5.3 Colossus（gpt-5.3-codex）；推理强度由下面的全局设置统一控制。',
+                '开启后，所有客户端 API Key 发起的 Claude 模型请求都会默认改走 GPT 5.5；推理强度由下面的全局设置统一控制。',
             })}
           </p>
           <ToggleSwitch
@@ -699,14 +699,14 @@ export function SystemPage() {
               <div className={styles.selectHint}>
                 {t('system_info.claude_to_gpt_mapping_hint', {
                   defaultValue:
-                    'Claude Opus 固定映射到 gpt-5.4；Claude Sonnet 与其他 Claude 固定映射到 GPT 5.3 Colossus（gpt-5.3-codex）。',
+                    '所有 Claude 模型默认映射到 gpt-5.5；如配置了全局 target family override，则按该配置覆盖。',
                 })}
               </div>
             </div>
             <div className={styles.selectWrap}>
               <input
                 className={styles.select}
-                value="Opus -> gpt-5.4, Sonnet -> gpt-5.3-codex"
+                value="Claude -> gpt-5.5"
                 disabled
                 aria-label={t('system_info.claude_to_gpt_mapping_label', {
                   defaultValue: '默认映射策略',

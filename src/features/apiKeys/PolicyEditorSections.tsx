@@ -156,7 +156,7 @@ export function PolicyEditorSections({
         <div className={styles.editorSectionHeader}>
           <div>
             <span className={styles.sectionKicker}>路由策略</span>
-            <h4>模型家族、回退目标与运行开关</h4>
+            <h4>模型家族与运行开关</h4>
           </div>
           <p>把模型映射和行为开关放在一起看，避免在不同区域来回切换判断。</p>
         </div>
@@ -170,12 +170,6 @@ export function PolicyEditorSections({
               onChange={(value) => onDraftChange('claudeGptTargetFamily', value)}
             />
           </div>
-          <Input
-            label="Claude Failover Target"
-            value={draft.claudeFailoverTarget}
-            onChange={(event) => onDraftChange('claudeFailoverTarget', event.target.value)}
-            placeholder="例如 gpt-5.4(high)"
-          />
           <div className="form-group">
             <label>客户端限制</label>
             <Select
@@ -200,8 +194,7 @@ export function PolicyEditorSections({
               }
             />
             <div className="hint">
-              `auto` 保持当前默认行为；也可以把当前 API Key 固定到 AI Provider 或 Codex auth
-              file。
+              `auto` 保持当前默认行为；也可以把当前 API Key 固定到 AI Provider 或 Codex auth file。
             </div>
           </div>
         </div>
@@ -225,6 +218,15 @@ export function PolicyEditorSections({
           </div>
           <div className={styles.toggleCard}>
             <ToggleSwitch
+              checked={draft.claudeGlobalFallbackEnabled}
+              onChange={(value) => onDraftChange('claudeGlobalFallbackEnabled', value)}
+              disabled={!draft.enableClaudeModels}
+              label="Claude 失败走全局兜底"
+            />
+            <p>原生 Claude 调用失败后，直接按系统页的全局 Claude 转 GPT 配置重试。</p>
+          </div>
+          <div className={styles.toggleCard}>
+            <ToggleSwitch
               checked={draft.enableClaudeOpus1M}
               onChange={(value) => onDraftChange('enableClaudeOpus1M', value)}
               label="允许 Claude Opus 1M"
@@ -238,14 +240,6 @@ export function PolicyEditorSections({
               label="允许 Claude Opus 4.6"
             />
             <p>独立控制 4.6 可用性，便于灰度和高成本模型限制。</p>
-          </div>
-          <div className={styles.toggleCard}>
-            <ToggleSwitch
-              checked={draft.claudeFailoverEnabled}
-              onChange={(value) => onDraftChange('claudeFailoverEnabled', value)}
-              label="Claude Failover"
-            />
-            <p>请求失败时启用兜底路由，减少单模型异常对终端用户的影响。</p>
           </div>
         </div>
       </section>
@@ -264,7 +258,8 @@ export function PolicyEditorSections({
             <strong>账户组预算已接管基础额度</strong>
             <span>
               该 API Key 当前归属于 {activeGroup.name}
-              。请求会先消耗账户组的日/周基础额度，再在基础额度耗尽后消耗 Token 包；周期锚点仍可按当前 key 单独配置。
+              。请求会先消耗账户组的日/周基础额度，再在基础额度耗尽后消耗 Token
+              包；周期锚点仍可按当前 key 单独配置。
             </span>
           </div>
         )}
@@ -286,9 +281,7 @@ export function PolicyEditorSections({
             value={draft.dailyBudgetUsd}
             onChange={(event) => onDraftChange('dailyBudgetUsd', event.target.value)}
             disabled={groupManagedBudget}
-            hint={
-              groupManagedBudget ? '已绑定账户组，基础日预算由账户组统一控制。' : undefined
-            }
+            hint={groupManagedBudget ? '已绑定账户组，基础日预算由账户组统一控制。' : undefined}
           />
           <Input
             label="每周期预算 USD"
@@ -298,9 +291,7 @@ export function PolicyEditorSections({
             value={draft.weeklyBudgetUsd}
             onChange={(event) => onDraftChange('weeklyBudgetUsd', event.target.value)}
             disabled={groupManagedBudget}
-            hint={
-              groupManagedBudget ? '已绑定账户组，基础周预算由账户组统一控制。' : undefined
-            }
+            hint={groupManagedBudget ? '已绑定账户组，基础周预算由账户组统一控制。' : undefined}
           />
           <Input
             label="周期锚点"
@@ -348,7 +339,7 @@ export function PolicyEditorSections({
             <textarea
               value={draft.dailyLimits}
               onChange={(event) => onDraftChange('dailyLimits', event.target.value)}
-              placeholder={'gpt-5.4=120\nclaude-sonnet-4-6=40'}
+              placeholder={'gpt-5.5=120\nclaude-sonnet-4-6=40'}
             />
           </label>
           <label className={styles.textAreaField}>
@@ -356,13 +347,6 @@ export function PolicyEditorSections({
             <textarea
               value={draft.modelRoutingRules}
               onChange={(event) => onDraftChange('modelRoutingRules', event.target.value)}
-            />
-          </label>
-          <label className={styles.textAreaField}>
-            <span>Claude Failover Rules JSON</span>
-            <textarea
-              value={draft.claudeFailoverRules}
-              onChange={(event) => onDraftChange('claudeFailoverRules', event.target.value)}
             />
           </label>
         </div>

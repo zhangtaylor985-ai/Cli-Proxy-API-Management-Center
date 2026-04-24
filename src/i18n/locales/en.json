@@ -128,7 +128,7 @@
     "filter_provider": "Provider",
     "filter_provider_placeholder": "For example anthropic",
     "filter_model_family": "Model Family",
-    "filter_model_family_placeholder": "For example gpt-5.4",
+    "filter_model_family_placeholder": "For example gpt-5.5",
     "filter_status": "Status",
     "filter_limit": "List limit",
     "status_all": "All statuses",

@@ -21,6 +21,7 @@ export type PolicyDraft = {
   fastMode: boolean;
   codexChannelMode: CodexChannelMode;
   enableClaudeModels: boolean;
+  claudeGlobalFallbackEnabled: boolean;
   claudeUsageLimitUsd: string;
   claudeGptTargetFamily: string;
   enableClaudeOpus1M: boolean;
@@ -35,9 +36,6 @@ export type PolicyDraft = {
   tokenPackageUsd: string;
   tokenPackageStartedAt: string;
   modelRoutingRules: string;
-  claudeFailoverEnabled: boolean;
-  claudeFailoverTarget: string;
-  claudeFailoverRules: string;
 };
 
 export const RANGE_OPTIONS = [
@@ -47,7 +45,8 @@ export const RANGE_OPTIONS = [
 ];
 
 export const FAMILY_OPTIONS = [
-  { value: '', label: '默认 gpt-5.4' },
+  { value: '', label: '默认 gpt-5.5' },
+  { value: 'gpt-5.5', label: 'gpt-5.5' },
   { value: 'gpt-5.4', label: 'gpt-5.4' },
   { value: 'gpt-5.2', label: 'gpt-5.2' },
   { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
@@ -144,6 +143,7 @@ export function emptyDraft(): PolicyDraft {
     fastMode: false,
     codexChannelMode: 'auto',
     enableClaudeModels: false,
+    claudeGlobalFallbackEnabled: true,
     claudeUsageLimitUsd: '',
     claudeGptTargetFamily: '',
     enableClaudeOpus1M: false,
@@ -158,9 +158,6 @@ export function emptyDraft(): PolicyDraft {
     tokenPackageUsd: '',
     tokenPackageStartedAt: '',
     modelRoutingRules: '[]',
-    claudeFailoverEnabled: false,
-    claudeFailoverTarget: '',
-    claudeFailoverRules: '[]',
   };
 }
 
@@ -274,6 +271,7 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     fastMode: Boolean(policy.fast_mode),
     codexChannelMode: policy.codex_channel_mode || 'auto',
     enableClaudeModels: Boolean(policy.enable_claude_models),
+    claudeGlobalFallbackEnabled: policy.claude_global_fallback_enabled !== false,
     claudeUsageLimitUsd: policy.claude_usage_limit_usd ? String(policy.claude_usage_limit_usd) : '',
     claudeGptTargetFamily: policy.claude_gpt_target_family || '',
     enableClaudeOpus1M: Boolean(policy.enable_claude_opus_1m),
@@ -283,14 +281,15 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     allowClaudeOpus46: policy.allow_claude_opus_46 !== false,
     dailyLimits: linesFromMap(policy.daily_limits || {}),
     dailyBudgetUsd: groupId ? '' : policy.daily_budget_usd ? String(policy.daily_budget_usd) : '',
-    weeklyBudgetUsd: groupId ? '' : policy.weekly_budget_usd ? String(policy.weekly_budget_usd) : '',
+    weeklyBudgetUsd: groupId
+      ? ''
+      : policy.weekly_budget_usd
+        ? String(policy.weekly_budget_usd)
+        : '',
     weeklyBudgetAnchorAt: normalizeHourInputValue(policy.weekly_budget_anchor_at),
     tokenPackageUsd: policy.token_package_usd ? String(policy.token_package_usd) : '',
     tokenPackageStartedAt: formatDateTimeLocal(policy.token_package_started_at),
     modelRoutingRules: JSON.stringify(policy.model_routing_rules || [], null, 2),
-    claudeFailoverEnabled: Boolean(policy.claude_failover_enabled),
-    claudeFailoverTarget: policy.claude_failover_target || '',
-    claudeFailoverRules: JSON.stringify(policy.claude_failover_rules || [], null, 2),
   };
 }
 
@@ -310,6 +309,7 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     fast_mode: draft.fastMode,
     codex_channel_mode: draft.codexChannelMode,
     enable_claude_models: draft.enableClaudeModels,
+    claude_global_fallback_enabled: draft.claudeGlobalFallbackEnabled,
     claude_usage_limit_usd: Number(draft.claudeUsageLimitUsd || 0),
     claude_gpt_target_family: draft.claudeGptTargetFamily,
     enable_claude_opus_1m: draft.enableClaudeOpus1M,
@@ -324,8 +324,5 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     token_package_usd: Number(draft.tokenPackageUsd || 0),
     token_package_started_at: toIsoOrEmpty(draft.tokenPackageStartedAt),
     model_routing_rules: parseJsonArray(draft.modelRoutingRules),
-    claude_failover_enabled: draft.claudeFailoverEnabled,
-    claude_failover_target: draft.claudeFailoverTarget.trim(),
-    claude_failover_rules: parseJsonArray(draft.claudeFailoverRules),
   };
 }
