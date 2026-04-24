@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "serve:caddy": "caddy run --config Caddyfile",
     "check:caddy": "caddy validate --config Caddyfile",
+    "redeploy:frontend": "bash scripts/redeploy_frontend.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,scss}\"",
     "type-check": "tsc --noEmit"
