@@ -216,6 +216,25 @@ export interface ApiKeyRecordDetailView {
   recent_events: ApiKeyEventView[];
 }
 
+export interface ApiKeyInsightSummaryView {
+  masked_api_key: string;
+  created_at: string;
+  expires_at: string;
+  last_used_at?: string;
+  today: ApiKeyUsageTotals;
+  current_period: ApiKeyUsageTotals;
+  daily_budget: ApiKeyBudgetWindowView;
+  weekly_budget: ApiKeyBudgetWindowView;
+  token_package: ApiKeyTokenPackageView;
+}
+
+export interface ApiKeyInsightDetailView {
+  summary: ApiKeyInsightSummaryView;
+  today_report: ApiKeyUsageTotals;
+  current_period_report: ApiKeyUsageTotals;
+  recent_days: ApiKeyRecentDayView[];
+}
+
 export interface ApiKeyRecordMutation {
   new_api_key?: string;
   policy?: ApiKeyPolicyView;
@@ -223,7 +242,7 @@ export interface ApiKeyRecordMutation {
 }
 
 export interface ApiKeyInsightsQueryResult {
-  items: ApiKeyRecordDetailView[];
+  items: ApiKeyInsightDetailView[];
   invalid_keys: string[];
 }
 

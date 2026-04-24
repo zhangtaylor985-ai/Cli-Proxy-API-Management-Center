@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { queryApiKeyInsights } from '@/services/api/apiKeyRecords';
-import type { ApiKeyRecordDetailView } from '@/services/api/apiKeyRecords';
+import type { ApiKeyInsightDetailView } from '@/services/api/apiKeyRecords';
 import { detectPublicApiBaseFromLocation } from '@/utils/connection';
 import styles from './APIKeyQueryPage.module.scss';
 
@@ -63,7 +63,7 @@ export function APIKeyQueryPage() {
   const [apiBase] = useState(() => detectPublicApiBaseFromLocation());
   const [keysText, setKeysText] = useState('');
   const [range, setRange] = useState('14d');
-  const [items, setItems] = useState<ApiKeyRecordDetailView[]>([]);
+  const [items, setItems] = useState<ApiKeyInsightDetailView[]>([]);
   const [invalidKeys, setInvalidKeys] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -185,14 +185,14 @@ export function APIKeyQueryPage() {
               </div>
             </Card>
           ) : (
-            items.map((item) => {
+            items.map((item, index) => {
               const maxCost = Math.max(
                 ...item.recent_days.map((row) => Number(row.cost_usd || 0)),
                 0.0001
               );
               return (
                 <Card
-                  key={item.summary.api_key}
+                  key={`${item.summary.masked_api_key}-${index}`}
                   className={styles.resultCard}
                   title={
                     <div className={styles.resultTitle}>
