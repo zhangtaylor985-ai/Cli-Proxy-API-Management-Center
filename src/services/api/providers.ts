@@ -67,13 +67,6 @@ const serializeProviderKey = (config: ProviderKeyConfig) => {
   if (config.probeTarget !== undefined) payload['probe-target'] = config.probeTarget;
   if (config.prefix?.trim()) payload.prefix = config.prefix.trim();
   if (config.baseUrl) payload['base-url'] = config.baseUrl;
-  if (config.probeMode?.trim()) payload['probe-mode'] = config.probeMode.trim();
-  if (config.probePath?.trim()) payload['probe-path'] = config.probePath.trim();
-  if (config.canaryEnabled !== undefined) payload['canary-enabled'] = config.canaryEnabled;
-  if (config.canaryPrompt?.trim()) payload['canary-prompt'] = config.canaryPrompt.trim();
-  if (config.canaryIntervalSeconds !== undefined) {
-    payload['canary-interval-seconds'] = config.canaryIntervalSeconds;
-  }
   if (config.websockets !== undefined) payload.websockets = config.websockets;
   if (config.proxyUrl) payload['proxy-url'] = config.proxyUrl;
   const headers = serializeHeaders(config.headers);
@@ -116,13 +109,6 @@ const serializeVertexKey = (config: ProviderKeyConfig) => {
   if (config.priority !== undefined) payload.priority = config.priority;
   if (config.prefix?.trim()) payload.prefix = config.prefix.trim();
   if (config.baseUrl) payload['base-url'] = config.baseUrl;
-  if (config.probeMode?.trim()) payload['probe-mode'] = config.probeMode.trim();
-  if (config.probePath?.trim()) payload['probe-path'] = config.probePath.trim();
-  if (config.canaryEnabled !== undefined) payload['canary-enabled'] = config.canaryEnabled;
-  if (config.canaryPrompt?.trim()) payload['canary-prompt'] = config.canaryPrompt.trim();
-  if (config.canaryIntervalSeconds !== undefined) {
-    payload['canary-interval-seconds'] = config.canaryIntervalSeconds;
-  }
   if (config.proxyUrl) payload['proxy-url'] = config.proxyUrl;
   const headers = serializeHeaders(config.headers);
   if (headers) payload.headers = headers;
@@ -139,13 +125,6 @@ const serializeGeminiKey = (config: GeminiKeyConfig) => {
   if (config.priority !== undefined) payload.priority = config.priority;
   if (config.prefix?.trim()) payload.prefix = config.prefix.trim();
   if (config.baseUrl) payload['base-url'] = config.baseUrl;
-  if (config.probeMode?.trim()) payload['probe-mode'] = config.probeMode.trim();
-  if (config.probePath?.trim()) payload['probe-path'] = config.probePath.trim();
-  if (config.canaryEnabled !== undefined) payload['canary-enabled'] = config.canaryEnabled;
-  if (config.canaryPrompt?.trim()) payload['canary-prompt'] = config.canaryPrompt.trim();
-  if (config.canaryIntervalSeconds !== undefined) {
-    payload['canary-interval-seconds'] = config.canaryIntervalSeconds;
-  }
   if (config.proxyUrl) payload['proxy-url'] = config.proxyUrl;
   const headers = serializeHeaders(config.headers);
   if (headers) payload.headers = headers;
@@ -166,13 +145,6 @@ const serializeOpenAIProvider = (provider: OpenAIProviderConfig) => {
       : [],
   };
   if (provider.prefix?.trim()) payload.prefix = provider.prefix.trim();
-  if (provider.probeMode?.trim()) payload['probe-mode'] = provider.probeMode.trim();
-  if (provider.probePath?.trim()) payload['probe-path'] = provider.probePath.trim();
-  if (provider.canaryEnabled !== undefined) payload['canary-enabled'] = provider.canaryEnabled;
-  if (provider.canaryPrompt?.trim()) payload['canary-prompt'] = provider.canaryPrompt.trim();
-  if (provider.canaryIntervalSeconds !== undefined) {
-    payload['canary-interval-seconds'] = provider.canaryIntervalSeconds;
-  }
   const headers = serializeHeaders(provider.headers);
   if (headers) payload.headers = headers;
   const models = serializeModelAliases(provider.models);
