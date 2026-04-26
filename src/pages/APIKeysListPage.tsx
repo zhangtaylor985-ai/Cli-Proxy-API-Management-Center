@@ -24,6 +24,7 @@ import type {
   ApiKeyRecordListParams,
   ApiKeyRecordStatsItem,
   ApiKeyRecordSummaryLiteView,
+  ApiKeyOwnershipStatsView,
 } from '@/services/api/apiKeyRecords';
 import { useAuthStore, useNotificationStore } from '@/stores';
 
@@ -59,6 +60,10 @@ export function APIKeysListPage() {
 
   const [items, setItems] = useState<ApiKeyRecordSummaryLiteView[]>([]);
   const [stats, setStats] = useState<Record<string, ApiKeyRecordStatsItem>>({});
+  const [ownershipStats, setOwnershipStats] = useState<ApiKeyOwnershipStatsView>({
+    admin_total: 0,
+    owners: [],
+  });
   const [groups, setGroups] = useState<ApiKeyGroupView[]>([]);
   const [pagination, setPagination] = useState({ page: 1, page_size: 20, total: 0, total_pages: 0 });
 
@@ -95,6 +100,7 @@ export function APIKeysListPage() {
         const response = await apiKeyRecordsApi.list(params);
         setItems(response.items);
         setPagination(response.pagination);
+        setOwnershipStats(response.ownership_stats);
         // Reset stats so old figures never leak into new rows after a filter
         // change; stats for the new page will be re-fetched right after.
         setStats({});
@@ -221,32 +227,70 @@ export function APIKeysListPage() {
     pagination.page,
     pagination.total_pages,
   ]);
+  const visibleStaffOwners = useMemo(
+    () => ownershipStats.owners.filter((owner) => owner.role === 'staff'),
+    [ownershipStats.owners]
+  );
+  const myOwnerTotal = useMemo(
+    () => visibleStaffOwners.reduce((sum, owner) => sum + owner.count, 0),
+    [visibleStaffOwners]
+  );
 
-  const renderListCard = (item: ApiKeyRecordSummaryLiteView) => {
+  const renderListRow = (item: ApiKeyRecordSummaryLiteView) => {
     const statItem = stats[item.api_key];
     const dailyPercent = statItem?.daily_budget.used_percent ?? 0;
     const weeklyPercent = statItem?.weekly_budget.used_percent ?? 0;
     const highestPercent = Math.max(dailyPercent, weeklyPercent);
     const tone = budgetTone(highestPercent);
     const expired = item.expired || isExpired(item.expires_at);
+    const ownerLabel = formatOwnerLabel(item.owner_username, item.owner_role);
 
     return (
       <button
         type="button"
         key={item.api_key}
-        className={apiStyles.listItem}
+        className={listStyles.keyRow}
         onClick={() => navigate(`/api-keys/${encodeURIComponent(item.api_key)}`)}
       >
-        <div className={apiStyles.listItemTop}>
-          <div>
-            <strong>{item.masked_api_key}</strong>
-            <div className={apiStyles.listItemMeta}>
-              {item.registered ? '已注册' : '仅策略配置'} · {item.policy_family || 'default'}
-              {item.group_name ? ` · ${item.group_name}` : ''}
-            </div>
-            {item.name && <div className={apiStyles.listItemMeta}>名称：{item.name}</div>}
-            {item.note && <div className={apiStyles.listItemMeta}>备注：{item.note}</div>}
-          </div>
+        <div className={listStyles.keyCellPrimary}>
+          <strong>{item.masked_api_key}</strong>
+          <span>
+            {item.name || item.note
+              ? [item.name ? `名称：${item.name}` : '', item.note ? `备注：${item.note}` : '']
+                  .filter(Boolean)
+                  .join(' · ')
+              : item.registered
+                ? '已注册'
+                : '仅策略配置'}
+          </span>
+        </div>
+        <div className={listStyles.keyCell}>
+          <span className={listStyles.ownerName}>{ownerLabel}</span>
+          <span className={listStyles.cellHint}>{item.owner_role === 'staff' ? '普通管理员' : 'Admin'}</span>
+        </div>
+        <div className={listStyles.keyCell}>
+          <span>{item.group_name || '未绑定'}</span>
+          <span className={listStyles.cellHint}>{item.policy_family || 'default'}</span>
+        </div>
+        <div className={listStyles.keyCell}>
+          <span>{formatDateTime(item.created_at)}</span>
+          <span className={listStyles.cellHint}>到期：{formatDateTime(item.expires_at)}</span>
+        </div>
+        <div className={listStyles.keyCell}>
+          <span>{formatDateTime(item.last_used_at)}</span>
+          {!isStaff && statItem ? (
+            <span className={listStyles.cellHint}>
+              今日 {formatCost(statItem.today.cost_usd)} · {formatNumber(statItem.today.total_tokens)} tokens
+            </span>
+          ) : !isStaff ? (
+            <span className={listStyles.cellHint}>
+              <span className={listStyles.skeleton} /> 统计加载中
+            </span>
+          ) : (
+            <span className={listStyles.cellHint}>策略视图</span>
+          )}
+        </div>
+        <div className={listStyles.statusCell}>
           <div className={apiStyles.groupItemBadges}>
             {item.disabled && <span className={`${apiStyles.badge} ${apiStyles.badgeDanger}`}>已禁用</span>}
             {!item.disabled && expired && (
@@ -263,41 +307,6 @@ export function APIKeysListPage() {
             ) : null}
           </div>
         </div>
-        {!isStaff && (
-          <div className={apiStyles.listMetrics}>
-            <span>
-              {statItem ? (
-                `${formatCost(statItem.today.cost_usd)} 今日`
-              ) : (
-                <>
-                  <span className={listStyles.skeleton} /> 今日
-                </>
-              )}
-            </span>
-            <span>
-              {statItem ? (
-                `${formatCost(statItem.current_period.cost_usd)} 周期`
-              ) : (
-                <>
-                  <span className={listStyles.skeleton} /> 周期
-                </>
-              )}
-            </span>
-            <span>
-              {statItem ? (
-                `${formatNumber(statItem.today.total_tokens)} tokens`
-              ) : (
-                <>
-                  <span className={listStyles.skeleton} /> tokens
-                </>
-              )}
-            </span>
-          </div>
-        )}
-        <div className={apiStyles.listItemMeta}>
-          创建于: {formatDateTime(item.created_at)} · 到期: {formatDateTime(item.expires_at)}
-        </div>
-        {!isStaff && <div className={apiStyles.listItemMeta}>最近使用: {formatDateTime(item.last_used_at)}</div>}
       </button>
     );
   };
@@ -309,8 +318,8 @@ export function APIKeysListPage() {
           <h1 className={apiStyles.pageTitle}>API Keys 管理</h1>
           <p className={apiStyles.description}>
             {isStaff
-              ? '员工账号仅可查看和维护 API Key 策略；预算统计、系统配置与其他工作台区域不会显示。'
-              : '分页查看每个 API Key 的当前策略与预算占用；新建 / 编辑均会进入独立的详情页，移动端也能完整使用。'}
+              ? '普通管理员只能查看和维护自己创建的 API Keys；Admin 创建的 key 和其他普通管理员的 key 不会显示。'
+              : 'Admin 可查看全部 API Keys，并按归属人快速判断每位管理员名下的 key 数量。'}
           </p>
         </div>
         <div className={listStyles.headerActions}>
@@ -338,6 +347,25 @@ export function APIKeysListPage() {
       </div>
 
       {error && <div className={apiStyles.errorBox}>{error}</div>}
+
+      <div className={listStyles.ownerStats}>
+        <div className={listStyles.ownerStatLead}>
+          <span>{isStaff ? '我的 Keys' : 'Admin 拥有'}</span>
+          <strong>{isStaff ? myOwnerTotal : ownershipStats.admin_total}</strong>
+        </div>
+        <div className={listStyles.ownerStatChips}>
+          {visibleStaffOwners
+            .map((owner) => (
+              <span key={`${owner.role}:${owner.username}`} className={listStyles.ownerChip}>
+                {formatOwnerLabel(owner.username, owner.role)}
+                <strong>{owner.count}</strong>
+              </span>
+            ))}
+          {!isStaff && visibleStaffOwners.length === 0 && (
+            <span className={listStyles.ownerChipMuted}>暂无普通管理员 Keys</span>
+          )}
+        </div>
+      </div>
 
       <Card
         title="筛选与排序"
@@ -379,7 +407,17 @@ export function APIKeysListPage() {
         ) : items.length === 0 ? (
           <div className={listStyles.emptyList}>没有匹配的 API Key。</div>
         ) : (
-          <div className={listStyles.cardGrid}>{items.map(renderListCard)}</div>
+          <div className={listStyles.keyTable}>
+            <div className={listStyles.keyTableHeader}>
+              <span>API Key</span>
+              <span>归属</span>
+              <span>账户组 / 策略</span>
+              <span>创建 / 到期</span>
+              <span>最近使用</span>
+              <span>状态</span>
+            </div>
+            {items.map(renderListRow)}
+          </div>
         )}
 
         {pagination.total > 0 && (
@@ -465,4 +503,9 @@ function buildPageNumbers(current: number, total: number): Array<number | 'ellip
   if (windowEnd < total - 1) pages.push('ellipsis');
   pages.push(total);
   return pages;
+}
+
+function formatOwnerLabel(username?: string, role?: string): string {
+  const name = String(username || '').trim() || 'legacy_admin';
+  return role === 'staff' ? name : `Admin · ${name}`;
 }

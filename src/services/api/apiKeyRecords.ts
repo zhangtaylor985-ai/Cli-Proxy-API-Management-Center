@@ -86,6 +86,8 @@ export interface ApiKeyPolicyView {
   created_at: string;
   expires_at: string;
   disabled: boolean;
+  owner_username: string;
+  owner_role: 'admin' | 'staff' | string;
   group_id: string;
   group_name?: string;
   allow_claude_family: boolean;
@@ -119,6 +121,8 @@ export interface ApiKeyRecordSummaryLiteView {
   created_at: string;
   expires_at: string;
   disabled: boolean;
+  owner_username: string;
+  owner_role: 'admin' | 'staff' | string;
   group_id: string;
   group_name?: string;
   registered: boolean;
@@ -142,6 +146,8 @@ export interface ApiKeyRecordSummaryView {
   created_at: string;
   expires_at: string;
   disabled: boolean;
+  owner_username: string;
+  owner_role: 'admin' | 'staff' | string;
   group_id: string;
   group_name?: string;
   registered: boolean;
@@ -169,6 +175,18 @@ export interface ApiKeyRecordListPagination {
 export interface ApiKeyRecordListResponse {
   items: ApiKeyRecordSummaryLiteView[];
   pagination: ApiKeyRecordListPagination;
+  ownership_stats: ApiKeyOwnershipStatsView;
+}
+
+export interface ApiKeyOwnerCountView {
+  username: string;
+  role: 'admin' | 'staff' | string;
+  count: number;
+}
+
+export interface ApiKeyOwnershipStatsView {
+  admin_total: number;
+  owners: ApiKeyOwnerCountView[];
 }
 
 export interface ApiKeyRecordListParams {
@@ -264,6 +282,7 @@ export const apiKeyRecordsApi = {
     return {
       items: Array.isArray(response?.items) ? response.items : [],
       pagination: response?.pagination ?? { page: 1, page_size: 0, total: 0, total_pages: 0 },
+      ownership_stats: response?.ownership_stats ?? { admin_total: 0, owners: [] },
     };
   },
 

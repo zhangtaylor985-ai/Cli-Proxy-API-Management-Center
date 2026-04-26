@@ -306,6 +306,8 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     created_at: draft.createdAt.trim(),
     expires_at: toIsoOrEmpty(draft.expiresAt),
     disabled: draft.disabled,
+    owner_username: '',
+    owner_role: '',
     group_id: groupId,
     allow_claude_family: draft.allowClaudeFamily,
     allow_gpt_family: draft.allowGptFamily,
