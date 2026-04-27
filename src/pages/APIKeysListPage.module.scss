@@ -19,7 +19,7 @@
 
 .filterBar {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1fr) minmax(260px, 1.2fr);
+  grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 1fr) minmax(170px, 0.9fr) minmax(250px, 1.2fr);
   gap: $spacing-md;
   align-items: start;
 

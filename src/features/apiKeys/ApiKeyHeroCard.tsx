@@ -13,6 +13,7 @@ import {
   isExpired,
   type PolicyDraft,
 } from './policyDraft';
+import { formatApiKeyOwnerLabel } from './ownerLabels';
 import styles from './apiKeys.module.scss';
 
 export type ApiKeyHeroCardProps = {
@@ -70,11 +71,7 @@ export function ApiKeyHeroCard({
           </span>
           <span>
             归属：
-            {summary
-              ? summary.owner_role === 'staff'
-                ? summary.owner_username || '普通管理员'
-                : `Admin · ${summary.owner_username || 'legacy_admin'}`
-              : '保存后绑定'}
+            {summary ? formatApiKeyOwnerLabel(summary.owner_username, summary.owner_role) : '保存后绑定'}
           </span>
           <span>账户组：{activeGroup?.name ?? '未绑定'}</span>
           <span>最近使用：{formatDateTime(summary?.last_used_at)}</span>

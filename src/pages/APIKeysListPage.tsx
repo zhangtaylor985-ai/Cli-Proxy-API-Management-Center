@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { NewApiKeyModal } from '@/features/apiKeys/NewApiKeyModal';
+import { formatApiKeyOwnerLabel, knownStaffOwnerOptions } from '@/features/apiKeys/ownerLabels';
 import {
   RANGE_OPTIONS,
   budgetTone,
@@ -71,6 +72,7 @@ export function APIKeysListPage() {
   const [searchInput, setSearchInput] = useState('');
   const [status, setStatus] = useState<StatusValue>('all');
   const [groupId, setGroupId] = useState('');
+  const [owner, setOwner] = useState('');
   const [sort, setSort] = useState<SortValue>('last_used');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [range, setRange] = useState('14d');
@@ -92,6 +94,7 @@ export function APIKeysListPage() {
         search,
         status,
         groupId,
+        owner,
         sort,
         order,
         ...overrides,
@@ -114,7 +117,7 @@ export function APIKeysListPage() {
         setListLoading(false);
       }
     },
-    [groupId, order, page, pageSize, search, showNotification, sort, status]
+    [groupId, order, owner, page, pageSize, search, showNotification, sort, status]
   );
 
   const loadStats = useCallback(
@@ -157,7 +160,7 @@ export function APIKeysListPage() {
   useEffect(() => {
     void loadList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, status, groupId, sort, order, search]);
+  }, [page, pageSize, status, groupId, owner, sort, order, search]);
 
   // Load stats for whatever page the list just returned.
   useEffect(() => {
@@ -182,6 +185,20 @@ export function APIKeysListPage() {
     ],
     [groups]
   );
+  const ownerFilterOptions = useMemo(() => {
+    const staffOwners = knownStaffOwnerOptions(ownershipStats.owners);
+    return [
+      { value: '', label: '全部归属' },
+      { value: 'admin', label: 'Admin' },
+      ...staffOwners.map((staffOwner) => ({
+        value: staffOwner.username,
+        label:
+          typeof staffOwner.count === 'number' && staffOwner.count > 0
+            ? `${formatApiKeyOwnerLabel(staffOwner.username, staffOwner.role)} (${staffOwner.count})`
+            : formatApiKeyOwnerLabel(staffOwner.username, staffOwner.role),
+      })),
+    ];
+  }, [ownershipStats.owners]);
 
   const openCreateModal = useCallback(() => setCreateModalOpen(true), []);
   const closeCreateModal = useCallback(() => setCreateModalOpen(false), []);
@@ -204,6 +221,10 @@ export function APIKeysListPage() {
   }, []);
   const handleGroupFilterChange = useCallback((value: string) => {
     setGroupId(value);
+    setPage(1);
+  }, []);
+  const handleOwnerFilterChange = useCallback((value: string) => {
+    setOwner(value);
     setPage(1);
   }, []);
   const handleSortChange = useCallback((value: string) => {
@@ -243,7 +264,7 @@ export function APIKeysListPage() {
     const highestPercent = Math.max(dailyPercent, weeklyPercent);
     const tone = budgetTone(highestPercent);
     const expired = item.expired || isExpired(item.expires_at);
-    const ownerLabel = formatOwnerLabel(item.owner_username, item.owner_role);
+    const ownerLabel = formatApiKeyOwnerLabel(item.owner_username, item.owner_role);
 
     return (
       <button
@@ -266,7 +287,7 @@ export function APIKeysListPage() {
         </div>
         <div className={listStyles.keyCell}>
           <span className={listStyles.ownerName}>{ownerLabel}</span>
-          <span className={listStyles.cellHint}>{item.owner_role === 'staff' ? '普通管理员' : 'Admin'}</span>
+          <span className={listStyles.cellHint}>{item.owner_role === 'staff' ? 'User' : 'Admin'}</span>
         </div>
         <div className={listStyles.keyCell}>
           <span>{item.group_name || '未绑定'}</span>
@@ -357,7 +378,7 @@ export function APIKeysListPage() {
           {visibleStaffOwners
             .map((owner) => (
               <span key={`${owner.role}:${owner.username}`} className={listStyles.ownerChip}>
-                {formatOwnerLabel(owner.username, owner.role)}
+                {formatApiKeyOwnerLabel(owner.username, owner.role)}
                 <strong>{owner.count}</strong>
               </span>
             ))}
@@ -385,6 +406,12 @@ export function APIKeysListPage() {
             <label>账户组</label>
             <Select value={groupId} options={groupFilterOptions} onChange={handleGroupFilterChange} />
           </div>
+          {!isStaff && (
+            <div className="form-group">
+              <label>归属</label>
+              <Select value={owner} options={ownerFilterOptions} onChange={handleOwnerFilterChange} />
+            </div>
+          )}
           <div className="form-group">
             <label>排序</label>
             <div className={listStyles.sortControls}>
@@ -503,9 +530,4 @@ function buildPageNumbers(current: number, total: number): Array<number | 'ellip
   if (windowEnd < total - 1) pages.push('ellipsis');
   pages.push(total);
   return pages;
-}
-
-function formatOwnerLabel(username?: string, role?: string): string {
-  const name = String(username || '').trim() || 'legacy_admin';
-  return role === 'staff' ? name : `Admin · ${name}`;
 }

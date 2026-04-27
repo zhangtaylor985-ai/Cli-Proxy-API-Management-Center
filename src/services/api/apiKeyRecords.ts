@@ -195,6 +195,7 @@ export interface ApiKeyRecordListParams {
   search?: string;
   status?: 'all' | 'active' | 'disabled' | 'expired';
   groupId?: string;
+  owner?: string;
   sort?: 'last_used' | 'created' | 'expires' | 'api_key';
   order?: 'asc' | 'desc';
 }
@@ -274,6 +275,7 @@ export const apiKeyRecordsApi = {
     if (params.search && params.search.trim()) query.set('search', params.search.trim());
     if (params.status && params.status !== 'all') query.set('status', params.status);
     if (params.groupId && params.groupId.trim()) query.set('group_id', params.groupId.trim());
+    if (params.owner && params.owner.trim()) query.set('owner', params.owner.trim());
     if (params.sort) query.set('sort', params.sort);
     if (params.order) query.set('order', params.order);
     const suffix = query.toString();
