@@ -282,9 +282,9 @@ export function PolicyEditorSections({
             <ToggleSwitch
               checked={draft.enableClaudeOpus1M}
               onChange={(value) => onDraftChange('enableClaudeOpus1M', value)}
-              label="允许 Claude Opus 1M"
+              label="允许 1M 上下文"
             />
-            <p>按需开放高上下文版本，避免默认对所有 key 暴露高成本能力。</p>
+            <p>开启后 Claude Code 可保留 1M 上下文信号，后端仍按该 key 的 GPT 路由承接。</p>
           </div>
           <div className={styles.toggleCard}>
             <ToggleSwitch

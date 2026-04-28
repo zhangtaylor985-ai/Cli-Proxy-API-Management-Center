@@ -156,6 +156,7 @@ export interface ApiKeyRecordSummaryLiteView {
   daily_limit_count: number;
   policy_family: string;
   enable_claude_models: boolean;
+  enable_claude_opus_1m: boolean;
   fast_mode: boolean;
   session_trajectory_disabled: boolean;
   expired: boolean;
@@ -187,6 +188,7 @@ export interface ApiKeyRecordSummaryView {
   daily_limit_count: number;
   policy_family: string;
   enable_claude_models: boolean;
+  enable_claude_opus_1m: boolean;
   fast_mode: boolean;
   session_trajectory_disabled: boolean;
 }

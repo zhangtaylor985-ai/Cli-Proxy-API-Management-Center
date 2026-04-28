@@ -407,7 +407,7 @@ export function SystemPage() {
       clearCache('disable-claude-opus-1m');
       showNotification(
         t('notification.claude_opus_1m_updated', {
-          defaultValue: 'Claude Opus 1M 默认策略已更新',
+          defaultValue: 'Claude 1M 上下文默认策略已更新',
         }),
         'success'
       );
@@ -815,18 +815,18 @@ export function SystemPage() {
 
         <Card
           title={t('system_info.disable_claude_opus_1m_title', {
-            defaultValue: '默认禁用 Claude Opus 1M',
+            defaultValue: '默认禁用 Claude 1M 上下文信号',
           })}
         >
           <p className={styles.sectionDescription}>
             {t('system_info.disable_claude_opus_1m_desc', {
               defaultValue:
-                '开启后，客户端 API Key 的 Claude 请求会默认去掉 Opus 1M 信号（包括自定义 1M 头与 context-1m beta），普通 Opus 4.6 仍可使用。',
+                '开启后，客户端 API Key 的 Claude 请求会默认去掉 1M 上下文信号（包括自定义 1M 头与 context-1m beta），普通 Claude 会话仍可使用。',
             })}
           </p>
           <ToggleSwitch
             label={t('system_info.disable_claude_opus_1m_toggle', {
-              defaultValue: '启用全局 Opus 1M 禁用策略',
+              defaultValue: '启用全局 1M 上下文禁用策略',
             })}
             labelPosition="left"
             checked={disableClaudeOpus1M}
@@ -838,7 +838,7 @@ export function SystemPage() {
           <div className="hint">
             {t('system_info.disable_claude_opus_1m_hint', {
               defaultValue:
-                '如需让某个 API Key 继续使用 Opus 1M，请到“API Key 策略”页面为该 Key 打开“允许 Opus 1M（覆盖全局）”。',
+                '如需让某个 API Key 继续保留 1M 上下文，请到“API Key 策略”页面为该 Key 打开“允许 1M 上下文”。',
             })}
           </div>
         </Card>

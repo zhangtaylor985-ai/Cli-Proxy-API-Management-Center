@@ -317,6 +317,9 @@ export function APIKeysListPage() {
             {!item.disabled && expired && (
               <span className={`${apiStyles.badge} ${apiStyles.badgeDanger}`}>已过期</span>
             )}
+            {item.enable_claude_opus_1m && (
+              <span className={`${apiStyles.badge} ${apiStyles.badgeSafe}`}>1M 上下文</span>
+            )}
             {!isStaff && statItem ? (
               <span className={`${apiStyles.badge} ${apiStyles[`badge${tone}`]}`}>
                 {formatPercent(highestPercent)}
