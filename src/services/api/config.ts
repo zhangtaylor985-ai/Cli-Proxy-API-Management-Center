@@ -66,7 +66,7 @@ export const configApi = {
     apiClient.put('/claude-to-gpt-reasoning-effort', { value: effort }),
 
   /**
-   * 默认禁用 Claude 1M 上下文信号
+   * Updates the legacy inverse flag for the global 1M context window policy.
    */
   updateDisableClaudeOpus1M: (enabled: boolean) =>
     apiClient.put('/disable-claude-opus-1m', { value: enabled }),

@@ -114,6 +114,7 @@ export function SystemPage() {
   const claudeToGptReasoningEffort =
     config?.claudeToGptReasoningEffort?.trim().toLowerCase() || DEFAULT_CLAUDE_GPT_REASONING_EFFORT;
   const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
+  const globalClaudeOpus1MAllowed = !disableClaudeOpus1M;
   const disablePromptTokenLimit = config?.disablePromptTokenLimit ?? false;
   const promptTokenLimitEnabled = !disablePromptTokenLimit;
   const claudeCodeOnlyEnabled = config?.claudeCodeOnlyEnabled ?? true;
@@ -400,19 +401,20 @@ export function SystemPage() {
     }
   };
 
-  const handleClaudeOpus1MToggle = async (enabled: boolean) => {
+  const handleClaudeOpus1MToggle = async (allowed: boolean) => {
     if (!config) return;
 
     const previous = disableClaudeOpus1M;
+    const nextDisableClaudeOpus1M = !allowed;
     setClaudeOpus1MSaving(true);
-    updateConfigValue('disable-claude-opus-1m', enabled);
+    updateConfigValue('disable-claude-opus-1m', nextDisableClaudeOpus1M);
 
     try {
-      await configApi.updateDisableClaudeOpus1M(enabled);
+      await configApi.updateDisableClaudeOpus1M(nextDisableClaudeOpus1M);
       clearCache('disable-claude-opus-1m');
       showNotification(
         t('notification.claude_opus_1m_updated', {
-          defaultValue: 'Claude 1M 上下文默认策略已更新',
+          defaultValue: '全局 1M 上下文窗口策略已更新',
         }),
         'success'
       );
@@ -850,21 +852,21 @@ export function SystemPage() {
 
         <Card
           title={t('system_info.disable_claude_opus_1m_title', {
-            defaultValue: '默认禁用 Claude 1M 上下文信号',
+            defaultValue: '允许 100 万 Token 上下文窗口',
           })}
         >
           <p className={styles.sectionDescription}>
             {t('system_info.disable_claude_opus_1m_desc', {
               defaultValue:
-                '开启后，客户端 API Key 的 Claude 请求会默认去掉 1M 上下文信号（包括自定义 1M 头与 context-1m beta），普通 Claude 会话仍可使用。',
+                '开启后，客户端 API Key 的 Claude 请求默认可保留 1M 上下文信号，并由后端按该 Key 的 GPT 路由承接。',
             })}
           </p>
           <ToggleSwitch
             label={t('system_info.disable_claude_opus_1m_toggle', {
-              defaultValue: '启用全局 1M 上下文禁用策略',
+              defaultValue: '允许全局 100 万 Token 上下文窗口',
             })}
             labelPosition="left"
-            checked={disableClaudeOpus1M}
+            checked={globalClaudeOpus1MAllowed}
             disabled={!canEditClaudeOpus1M}
             onChange={(value) => {
               void handleClaudeOpus1MToggle(value);
@@ -873,7 +875,7 @@ export function SystemPage() {
           <div className="hint">
             {t('system_info.disable_claude_opus_1m_hint', {
               defaultValue:
-                '如需让某个 API Key 继续保留 1M 上下文，请到“API Key 策略”页面为该 Key 打开“允许 1M 上下文”。',
+                '关闭后，服务端会默认去掉 1M 上下文信号；如需让某个 API Key 继续保留 1M，请到“API Key 策略”页面为该 Key 打开“允许 1M 上下文”。',
             })}
           </div>
         </Card>
