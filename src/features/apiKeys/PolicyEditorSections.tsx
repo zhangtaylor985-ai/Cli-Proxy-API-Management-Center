@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
+import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import type { ApiKeyTokenPackagePolicyView } from '@/services/api/apiKeyRecords';
 import type { ApiKeyGroupView } from '@/services/api/apiKeyGroups';
 import {
   CLAUDE_CODE_ONLY_MODE_OPTIONS,
@@ -12,6 +14,7 @@ import {
   addExpiryPreset,
   formatCost,
   formatDateTime,
+  getCurrentHourInputValue,
   listFromLines,
   normalizeHourInputValue,
   resolveExpiryPreset,
@@ -37,6 +40,14 @@ export function PolicyEditorSections({
   activeGroup,
 }: PolicyEditorSectionsProps) {
   const expiryPreset = useMemo(() => resolveExpiryPreset(draft.expiresAt), [draft.expiresAt]);
+  const tokenPackageTotal = useMemo(
+    () =>
+      draft.tokenPackages.reduce((sum, item) => {
+        const value = Number(item.usd || 0);
+        return Number.isFinite(value) && value > 0 ? sum + value : sum;
+      }, 0),
+    [draft.tokenPackages]
+  );
   const groupOptions = useMemo(
     () => [
       { value: '', label: '不绑定账户组' },
@@ -48,6 +59,37 @@ export function PolicyEditorSections({
     [groups]
   );
   const groupManagedBudget = Boolean(draft.groupId.trim());
+
+  const updateTokenPackage = (
+    index: number,
+    patch: Partial<ApiKeyTokenPackagePolicyView>
+  ) => {
+    onDraftChange(
+      'tokenPackages',
+      draft.tokenPackages.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item
+      )
+    );
+  };
+
+  const addTokenPackage = () => {
+    onDraftChange('tokenPackages', [
+      ...draft.tokenPackages,
+      {
+        id: '',
+        started_at: getCurrentHourInputValue(),
+        usd: 100,
+        note: '',
+      },
+    ]);
+  };
+
+  const removeTokenPackage = (index: number) => {
+    onDraftChange(
+      'tokenPackages',
+      draft.tokenPackages.filter((_, itemIndex) => itemIndex !== index)
+    );
+  };
 
   return (
     <div className={styles.editorSections}>
@@ -320,15 +362,74 @@ export function PolicyEditorSections({
           />
         </div>
 
-        <div className={styles.textAreaGrid}>
-          <label className={styles.textAreaField}>
-            <span>Token 流量包记录</span>
-            <textarea
-              value={draft.tokenPackages}
-              onChange={(event) => onDraftChange('tokenPackages', event.target.value)}
-              placeholder={'100 | 2026-04-21T00:00 | 首次充值\n100 | 2026-04-28T00:00 | 续费充值'}
-            />
-          </label>
+        <div className={styles.tokenPackageEditor}>
+          <div className={styles.tokenPackageHeader}>
+            <div>
+              <span className={styles.sectionKicker}>Token 流量包</span>
+              <strong>{formatCost(tokenPackageTotal)}</strong>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={addTokenPackage}>
+              新增流量包
+            </Button>
+          </div>
+
+          {draft.tokenPackages.length ? (
+            <div className={styles.tokenPackageRows}>
+              {draft.tokenPackages.map((item, index) => (
+                <div className={styles.tokenPackageRow} key={`${item.id || 'new'}-${index}`}>
+                  <Input
+                    label="金额 USD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={String(item.usd || '')}
+                    onChange={(event) =>
+                      updateTokenPackage(index, { usd: Number(event.target.value || 0) })
+                    }
+                  />
+                  <Input
+                    label="开始时间"
+                    type="datetime-local"
+                    value={item.started_at || ''}
+                    onChange={(event) =>
+                      updateTokenPackage(index, { started_at: event.target.value })
+                    }
+                    onBlur={(event) =>
+                      updateTokenPackage(index, {
+                        started_at: event.target.value
+                          ? normalizeHourInputValue(event.target.value)
+                          : '',
+                      })
+                    }
+                  />
+                  <Input
+                    label="备注"
+                    value={item.note || ''}
+                    onChange={(event) => updateTokenPackage(index, { note: event.target.value })}
+                    placeholder="例如 首次充值"
+                  />
+                  <div className={styles.tokenPackageActions}>
+                    {item.id && <span>{item.id}</span>}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeTokenPackage(index)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.tokenPackageEmpty}>
+              <span>还没有配置预付流量包。</span>
+              <Button type="button" variant="secondary" size="sm" onClick={addTokenPackage}>
+                添加第一条
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
