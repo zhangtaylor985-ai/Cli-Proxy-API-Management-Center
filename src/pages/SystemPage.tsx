@@ -93,6 +93,7 @@ export function SystemPage() {
   const [claudeStylePromptDraft, setClaudeStylePromptDraft] = useState('');
   const [claudeReasoningEffortSaving, setClaudeReasoningEffortSaving] = useState(false);
   const [claudeOpus1MSaving, setClaudeOpus1MSaving] = useState(false);
+  const [promptTokenLimitSaving, setPromptTokenLimitSaving] = useState(false);
   const [claudeCodeOnlySaving, setClaudeCodeOnlySaving] = useState(false);
 
   const apiKeysCache = useRef<string[]>([]);
@@ -113,6 +114,8 @@ export function SystemPage() {
   const claudeToGptReasoningEffort =
     config?.claudeToGptReasoningEffort?.trim().toLowerCase() || DEFAULT_CLAUDE_GPT_REASONING_EFFORT;
   const disableClaudeOpus1M = config?.disableClaudeOpus1M ?? false;
+  const disablePromptTokenLimit = config?.disablePromptTokenLimit ?? false;
+  const promptTokenLimitEnabled = !disablePromptTokenLimit;
   const claudeCodeOnlyEnabled = config?.claudeCodeOnlyEnabled ?? true;
   const requestLogDirty = requestLogDraft !== requestLogEnabled;
   const claudeStylePromptDirty = claudeStylePromptDraft !== claudeStylePrompt;
@@ -129,6 +132,8 @@ export function SystemPage() {
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeReasoningEffortSaving;
   const canEditClaudeOpus1M =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeOpus1MSaving;
+  const canEditPromptTokenLimit =
+    auth.connectionStatus === 'connected' && Boolean(config) && !promptTokenLimitSaving;
   const canEditClaudeCodeOnly =
     auth.connectionStatus === 'connected' && Boolean(config) && !claudeCodeOnlySaving;
 
@@ -421,6 +426,36 @@ export function SystemPage() {
       );
     } finally {
       setClaudeOpus1MSaving(false);
+    }
+  };
+
+  const handlePromptTokenLimitToggle = async (enabled: boolean) => {
+    if (!config) return;
+
+    const previous = disablePromptTokenLimit;
+    const nextDisabled = !enabled;
+    setPromptTokenLimitSaving(true);
+    updateConfigValue('disable-prompt-token-limit', nextDisabled);
+
+    try {
+      await configApi.updateDisablePromptTokenLimit(nextDisabled);
+      clearCache('disable-prompt-token-limit');
+      showNotification(
+        t('notification.prompt_token_limit_updated', {
+          defaultValue: 'Prompt Token 大小限制已更新',
+        }),
+        'success'
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+      updateConfigValue('disable-prompt-token-limit', previous);
+      showNotification(
+        `${t('notification.update_failed')}${message ? `: ${message}` : ''}`,
+        'error'
+      );
+    } finally {
+      setPromptTokenLimitSaving(false);
     }
   };
 
@@ -839,6 +874,36 @@ export function SystemPage() {
             {t('system_info.disable_claude_opus_1m_hint', {
               defaultValue:
                 '如需让某个 API Key 继续保留 1M 上下文，请到“API Key 策略”页面为该 Key 打开“允许 1M 上下文”。',
+            })}
+          </div>
+        </Card>
+
+        <Card
+          title={t('system_info.prompt_token_limit_title', {
+            defaultValue: 'Prompt Token 大小限制',
+          })}
+        >
+          <p className={styles.sectionDescription}>
+            {t('system_info.prompt_token_limit_desc', {
+              defaultValue:
+                '开启后，服务端会在请求进入上游前做 Prompt Token 大小预检；关闭后跳过这项预检，不代表承诺支持更大的上下文。',
+            })}
+          </p>
+          <ToggleSwitch
+            label={t('system_info.prompt_token_limit_toggle', {
+              defaultValue: '启用 Prompt Token 大小限制',
+            })}
+            labelPosition="left"
+            checked={promptTokenLimitEnabled}
+            disabled={!canEditPromptTokenLimit}
+            onChange={(value) => {
+              void handlePromptTokenLimitToggle(value);
+            }}
+          />
+          <div className="hint">
+            {t('system_info.prompt_token_limit_hint', {
+              defaultValue:
+                '默认开启。关闭后服务端不再主动返回 Prompt 过长提示，超限请求会继续交给客户端或上游处理。',
             })}
           </div>
         </Card>

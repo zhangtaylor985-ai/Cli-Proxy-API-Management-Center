@@ -42,6 +42,7 @@ const SECTION_KEYS: RawConfigSection[] = [
   'claude-to-gpt-target-family',
   'claude-to-gpt-reasoning-effort',
   'disable-claude-opus-1m',
+  'disable-prompt-token-limit',
   'claude-code-only-enabled',
   'request-retry',
   'quota-exceeded',
@@ -82,6 +83,8 @@ const extractSectionValue = (config: Config | null, section?: RawConfigSection) 
       return config.claudeToGptReasoningEffort;
     case 'disable-claude-opus-1m':
       return config.disableClaudeOpus1M;
+    case 'disable-prompt-token-limit':
+      return config.disablePromptTokenLimit;
     case 'claude-code-only-enabled':
       return config.claudeCodeOnlyEnabled;
     case 'request-retry':
@@ -241,6 +244,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
           break;
         case 'disable-claude-opus-1m':
           nextConfig.disableClaudeOpus1M = value as Config['disableClaudeOpus1M'];
+          break;
+        case 'disable-prompt-token-limit':
+          nextConfig.disablePromptTokenLimit = value as Config['disablePromptTokenLimit'];
           break;
         case 'claude-code-only-enabled':
           nextConfig.claudeCodeOnlyEnabled = value as Config['claudeCodeOnlyEnabled'];

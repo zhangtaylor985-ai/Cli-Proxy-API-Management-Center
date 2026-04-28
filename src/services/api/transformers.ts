@@ -373,6 +373,9 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
   config.disableClaudeOpus1M = normalizeBoolean(
     raw['disable-claude-opus-1m'] ?? raw.disableClaudeOpus1M
   );
+  config.disablePromptTokenLimit = normalizeBoolean(
+    raw['disable-prompt-token-limit'] ?? raw.disablePromptTokenLimit
+  );
   config.claudeCodeOnlyEnabled = normalizeBoolean(
     raw['claude-code-only-enabled'] ?? raw.claudeCodeOnlyEnabled
   );

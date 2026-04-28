@@ -72,6 +72,12 @@ export const configApi = {
     apiClient.put('/disable-claude-opus-1m', { value: enabled }),
 
   /**
+   * 禁用 Prompt Token 大小限制
+   */
+  updateDisablePromptTokenLimit: (enabled: boolean) =>
+    apiClient.put('/disable-prompt-token-limit', { value: enabled }),
+
+  /**
    * 默认仅允许 Claude Code 客户端
    */
   updateClaudeCodeOnlyEnabled: (enabled: boolean) =>

@@ -20,6 +20,7 @@ export interface Config {
   claudeToGptTargetFamily?: string;
   claudeToGptReasoningEffort?: string;
   disableClaudeOpus1M?: boolean;
+  disablePromptTokenLimit?: boolean;
   claudeCodeOnlyEnabled?: boolean;
   anthropicBaseUrl?: string;
   anthropicOAuthTokenUrl?: string;
@@ -53,6 +54,7 @@ export type RawConfigSection =
   | 'claude-to-gpt-target-family'
   | 'claude-to-gpt-reasoning-effort'
   | 'disable-claude-opus-1m'
+  | 'disable-prompt-token-limit'
   | 'claude-code-only-enabled'
   | 'anthropic-base-url'
   | 'anthropic-oauth-token-url'
