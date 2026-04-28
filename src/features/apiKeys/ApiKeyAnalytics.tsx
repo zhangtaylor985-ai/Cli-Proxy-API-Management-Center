@@ -4,6 +4,8 @@ import type {
   ApiKeyEventView,
   ApiKeyRecordDetailView,
   ApiKeyRecordSummaryView,
+  ApiKeyTokenPackageLedgerView,
+  ApiKeyTokenPackageUsageEventView,
 } from '@/services/api/apiKeyRecords';
 import {
   budgetTone,
@@ -77,6 +79,72 @@ function RecentEventsTable({ items }: { items: ApiKeyEventView[] }) {
                   {item.failed ? '失败' : '成功'}
                 </span>
               </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TokenPackageLedgerTable({ items }: { items: ApiKeyTokenPackageLedgerView[] }) {
+  if (!items.length) {
+    return <div className={styles.emptyState}>暂无 Token 流量包</div>;
+  }
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>开始时间</th>
+            <th>总额</th>
+            <th>已用</th>
+            <th>剩余</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id || item.started_at}>
+              <td>{formatDateTime(item.started_at)}</td>
+              <td>{formatCost(item.total_usd)}</td>
+              <td>{formatCost(item.used_usd)}</td>
+              <td>{formatCost(item.remaining_usd)}</td>
+              <td>
+                <span
+                  className={`${styles.badge} ${item.active ? styles.badgeSuccess : styles.badgeNeutral}`}
+                >
+                  {item.active ? '可用' : '未激活/已用尽'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TokenPackageUsageTable({ items }: { items: ApiKeyTokenPackageUsageEventView[] }) {
+  if (!items.length) {
+    return <div className={styles.emptyState}>暂无 Token 包消耗明细</div>;
+  }
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>流量包</th>
+            <th>消耗</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={`${item.requested_at}-${item.package_id}-${index}`}>
+              <td>{formatDateTime(item.requested_at)}</td>
+              <td>{item.package_id || 'legacy'}</td>
+              <td>{formatCost(item.cost_usd)}</td>
             </tr>
           ))}
         </tbody>
@@ -193,6 +261,14 @@ export function ApiKeyAnalytics({ summary, detail, detailLoading }: ApiKeyAnalyt
         ) : (
           <div className={styles.emptyState}>暂无模型用量</div>
         )}
+      </Card>
+
+      <Card className={styles.analyticsCard} title="Token 流量包记录">
+        <TokenPackageLedgerTable items={summary?.token_packages ?? []} />
+      </Card>
+
+      <Card className={styles.analyticsCard} title="Token 包使用详情">
+        <TokenPackageUsageTable items={detail?.token_package_usage_events ?? []} />
       </Card>
 
       <Card className={styles.analyticsCard} title="最近请求">

@@ -34,6 +34,30 @@ export interface ApiKeyTokenPackageView {
   active: boolean;
 }
 
+export interface ApiKeyTokenPackagePolicyView {
+  id: string;
+  started_at: string;
+  usd: number;
+  note: string;
+}
+
+export interface ApiKeyTokenPackageLedgerView {
+  id: string;
+  started_at: string;
+  total_usd: number;
+  used_usd: number;
+  remaining_usd: number;
+  active: boolean;
+  note?: string;
+}
+
+export interface ApiKeyTokenPackageUsageEventView {
+  requested_at: string;
+  package_id: string;
+  cost_usd: number;
+  cost_micro_usd: number;
+}
+
 export interface ApiKeyDailyLimitView {
   model: string;
   limit: number;
@@ -110,6 +134,7 @@ export interface ApiKeyPolicyView {
   weekly_budget_anchor_at: string;
   token_package_usd: number;
   token_package_started_at: string;
+  token_packages: ApiKeyTokenPackagePolicyView[];
   model_routing_rules: Array<Record<string, unknown>>;
 }
 
@@ -158,6 +183,7 @@ export interface ApiKeyRecordSummaryView {
   daily_budget: ApiKeyBudgetWindowView;
   weekly_budget: ApiKeyBudgetWindowView;
   token_package: ApiKeyTokenPackageView;
+  token_packages: ApiKeyTokenPackageLedgerView[];
   daily_limit_count: number;
   policy_family: string;
   enable_claude_models: boolean;
@@ -207,6 +233,7 @@ export interface ApiKeyRecordStatsItem {
   daily_budget: ApiKeyBudgetWindowView;
   weekly_budget: ApiKeyBudgetWindowView;
   token_package: ApiKeyTokenPackageView;
+  token_packages: ApiKeyTokenPackageLedgerView[];
 }
 
 export interface ApiKeyRecordStatsResponse {
@@ -232,6 +259,7 @@ export interface ApiKeyRecordDetailView {
   recent_days: ApiKeyRecentDayView[];
   model_usage: ApiKeyModelUsageView[];
   daily_limits: ApiKeyDailyLimitView[];
+  token_package_usage_events: ApiKeyTokenPackageUsageEventView[];
   recent_events: ApiKeyEventView[];
 }
 
@@ -245,6 +273,7 @@ export interface ApiKeyInsightSummaryView {
   daily_budget: ApiKeyBudgetWindowView;
   weekly_budget: ApiKeyBudgetWindowView;
   token_package: ApiKeyTokenPackageView;
+  token_packages: ApiKeyTokenPackageLedgerView[];
 }
 
 export interface ApiKeyInsightDetailView {

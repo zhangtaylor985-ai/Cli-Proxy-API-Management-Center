@@ -318,20 +318,17 @@ export function PolicyEditorSections({
             }
             hint="优先使用周期锚点；留空时回退到创建时间。"
           />
-          <Input
-            label="Token 包 USD"
-            type="number"
-            min="0"
-            step="0.01"
-            value={draft.tokenPackageUsd}
-            onChange={(event) => onDraftChange('tokenPackageUsd', event.target.value)}
-          />
-          <Input
-            label="Token 包开始时间"
-            type="datetime-local"
-            value={draft.tokenPackageStartedAt}
-            onChange={(event) => onDraftChange('tokenPackageStartedAt', event.target.value)}
-          />
+        </div>
+
+        <div className={styles.textAreaGrid}>
+          <label className={styles.textAreaField}>
+            <span>Token 流量包记录</span>
+            <textarea
+              value={draft.tokenPackages}
+              onChange={(event) => onDraftChange('tokenPackages', event.target.value)}
+              placeholder={'100 | 2026-04-21T00:00 | 首次充值\n100 | 2026-04-28T00:00 | 续费充值'}
+            />
+          </label>
         </div>
       </section>
 

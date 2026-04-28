@@ -247,6 +247,35 @@ export function APIKeyQueryPage() {
                     <section className={styles.resultSection}>
                       <div className={styles.sectionHeader}>
                         <div>
+                          <span className={styles.sectionKicker}>Token 流量包</span>
+                          <h3>逐条余额</h3>
+                        </div>
+                        <p>每次充值都会作为独立记录展示，余额按开始时间顺序消耗。</p>
+                      </div>
+                      <div className={styles.windowGrid}>
+                        {(item.summary.token_packages ?? []).length ? (
+                          item.summary.token_packages.map((pkg) => (
+                            <div className={styles.windowCard} key={pkg.id || pkg.started_at}>
+                              <span>{formatDateTime(pkg.started_at)}</span>
+                              <strong>{formatCost(pkg.remaining_usd)}</strong>
+                              <small>
+                                已用 {formatCost(pkg.used_usd)} / 总额 {formatCost(pkg.total_usd)}
+                              </small>
+                            </div>
+                          ))
+                        ) : (
+                          <div className={styles.windowCard}>
+                            <span>暂无 Token 流量包</span>
+                            <strong>{formatCost(0)}</strong>
+                            <small>未配置预付余额</small>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className={styles.resultSection}>
+                      <div className={styles.sectionHeader}>
+                        <div>
                           <span className={styles.sectionKicker}>预算窗口</span>
                           <h3>预算占用与请求情况</h3>
                         </div>

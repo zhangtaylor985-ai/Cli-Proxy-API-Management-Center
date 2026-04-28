@@ -1,4 +1,4 @@
-import type { ApiKeyPolicyView } from '@/services/api/apiKeyRecords';
+import type { ApiKeyPolicyView, ApiKeyTokenPackagePolicyView } from '@/services/api/apiKeyRecords';
 
 export type ClaudeCodeOnlyMode = 'inherit' | 'enabled' | 'disabled';
 export type CodexChannelMode = 'auto' | 'provider' | 'auth_file';
@@ -36,6 +36,7 @@ export type PolicyDraft = {
   weeklyBudgetAnchorAt: string;
   tokenPackageUsd: string;
   tokenPackageStartedAt: string;
+  tokenPackages: string;
   modelRoutingRules: string;
 };
 
@@ -159,6 +160,7 @@ export function emptyDraft(): PolicyDraft {
     weeklyBudgetAnchorAt: getCurrentHourInputValue(),
     tokenPackageUsd: '',
     tokenPackageStartedAt: '',
+    tokenPackages: '',
     modelRoutingRules: '[]',
   };
 }
@@ -242,6 +244,54 @@ export function listFromLines(source: string): string[] {
     .filter(Boolean);
 }
 
+export function tokenPackageLinesFromList(source: ApiKeyTokenPackagePolicyView[] = []): string {
+  return source
+    .map((item) => {
+      const parts = [
+        String(item.usd || '').trim(),
+        formatDateTimeLocal(item.started_at),
+        String(item.note || '').trim(),
+        String(item.id || '').trim(),
+      ];
+      return parts.join(' | ').replace(/\s+\|\s+$/g, '');
+    })
+    .filter((line) => line.trim())
+    .join('\n');
+}
+
+export function tokenPackageListFromLines(source: string): ApiKeyTokenPackagePolicyView[] {
+  return source
+    .split('\n')
+    .map((line) => {
+      const [usdPart, startedPart, notePart, idPart] = line.split('|').map((part) => part.trim());
+      const usd = Number(usdPart || 0);
+      const started_at = toIsoOrEmpty(startedPart || '');
+      if (!Number.isFinite(usd) || usd <= 0 || !started_at) return null;
+      return {
+        id: idPart || '',
+        started_at,
+        usd,
+        note: notePart || '',
+      };
+    })
+    .filter((item): item is ApiKeyTokenPackagePolicyView => Boolean(item));
+}
+
+function legacyTokenPackageList(policy: ApiKeyPolicyView): ApiKeyTokenPackagePolicyView[] {
+  if (Array.isArray(policy.token_packages) && policy.token_packages.length > 0) {
+    return policy.token_packages;
+  }
+  if (!policy.token_package_usd || !policy.token_package_started_at) return [];
+  return [
+    {
+      id: '',
+      started_at: policy.token_package_started_at,
+      usd: policy.token_package_usd,
+      note: '',
+    },
+  ];
+}
+
 function parseJsonArray(source: string): Array<Record<string, unknown>> {
   const trimmed = source.trim();
   if (!trimmed) return [];
@@ -260,6 +310,7 @@ export function budgetTone(percent: number): 'Safe' | 'Warn' | 'Danger' {
 
 export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDraft {
   const groupId = policy.group_id || '';
+  const tokenPackages = legacyTokenPackageList(policy);
   return {
     apiKey: policy.api_key || fallbackKey,
     name: policy.name || '',
@@ -292,6 +343,7 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
     weeklyBudgetAnchorAt: normalizeHourInputValue(policy.weekly_budget_anchor_at),
     tokenPackageUsd: policy.token_package_usd ? String(policy.token_package_usd) : '',
     tokenPackageStartedAt: formatDateTimeLocal(policy.token_package_started_at),
+    tokenPackages: tokenPackageLinesFromList(tokenPackages),
     modelRoutingRules: JSON.stringify(policy.model_routing_rules || [], null, 2),
   };
 }
@@ -299,6 +351,9 @@ export function toDraft(policy: ApiKeyPolicyView, fallbackKey: string): PolicyDr
 export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
   const groupId = draft.groupId.trim();
   const usesGroupBudget = Boolean(groupId);
+  const tokenPackages = tokenPackageListFromLines(draft.tokenPackages);
+  const firstTokenPackage = tokenPackages[0];
+  const totalTokenPackageUsd = tokenPackages.reduce((sum, item) => sum + Number(item.usd || 0), 0);
   return {
     api_key: draft.apiKey.trim(),
     name: draft.name.trim(),
@@ -327,8 +382,11 @@ export function toPolicyView(draft: PolicyDraft): ApiKeyPolicyView {
     daily_budget_usd: usesGroupBudget ? 0 : Number(draft.dailyBudgetUsd || 0),
     weekly_budget_usd: usesGroupBudget ? 0 : Number(draft.weeklyBudgetUsd || 0),
     weekly_budget_anchor_at: toHourlyIsoOrEmpty(draft.weeklyBudgetAnchorAt),
-    token_package_usd: Number(draft.tokenPackageUsd || 0),
-    token_package_started_at: toIsoOrEmpty(draft.tokenPackageStartedAt),
+    token_package_usd: tokenPackages.length ? totalTokenPackageUsd : Number(draft.tokenPackageUsd || 0),
+    token_package_started_at: tokenPackages.length
+      ? firstTokenPackage.started_at
+      : toIsoOrEmpty(draft.tokenPackageStartedAt),
+    token_packages: tokenPackages,
     model_routing_rules: parseJsonArray(draft.modelRoutingRules),
   };
 }
