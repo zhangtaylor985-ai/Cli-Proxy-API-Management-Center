@@ -7,6 +7,9 @@ export const codexWorkersApi = {
   updateProxy: (id: string, proxyUrl: string) =>
     apiClient.put(`/codex-workers/${encodeURIComponent(id)}/proxy`, { proxy_url: proxyUrl }),
 
+  updateRouting: (id: string, enabled: boolean) =>
+    apiClient.put(`/codex-workers/${encodeURIComponent(id)}/routing`, { enabled }),
+
   containerAction: (id: string, action: 'start' | 'stop' | 'restart') =>
     apiClient.post(`/codex-workers/${encodeURIComponent(id)}/container`, { action }),
 

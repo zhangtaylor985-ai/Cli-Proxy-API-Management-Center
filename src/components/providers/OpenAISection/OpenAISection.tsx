@@ -2,6 +2,7 @@ import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IconCheck, IconX } from '@/components/ui/icons';
 import iconOpenaiLight from '@/assets/icons/openai-light.svg';
 import iconOpenaiDark from '@/assets/icons/openai-dark.svg';
@@ -16,7 +17,7 @@ import {
 import styles from '@/pages/AiProvidersPage.module.scss';
 import { ProviderList } from '../ProviderList';
 import { ProviderStatusBar } from '../ProviderStatusBar';
-import { getOpenAIProviderStats, getStatsBySource } from '../utils';
+import { getOpenAIProviderStats, getStatsBySource, hasDisableAllModelsRule } from '../utils';
 
 interface OpenAISectionProps {
   configs: OpenAIProviderConfig[];
@@ -29,6 +30,7 @@ interface OpenAISectionProps {
   onAdd: () => void;
   onEdit: (index: number) => void;
   onDelete: (index: number) => void;
+  onToggle: (index: number, enabled: boolean) => void;
 }
 
 export function OpenAISection({
@@ -42,6 +44,7 @@ export function OpenAISection({
   onAdd,
   onEdit,
   onDelete,
+  onToggle,
 }: OpenAISectionProps) {
   const { t } = useTranslation();
   const actionsDisabled = disableControls || loading || isSwitching;
@@ -93,15 +96,32 @@ export function OpenAISection({
           onEdit={onEdit}
           onDelete={onDelete}
           actionsDisabled={actionsDisabled}
+          getRowDisabled={(item) => hasDisableAllModelsRule(item.excludedModels)}
+          renderExtraActions={(item, index) => (
+            <ToggleSwitch
+              checked={!hasDisableAllModelsRule(item.excludedModels)}
+              onChange={(value) => void onToggle(index, value)}
+              disabled={actionsDisabled}
+              ariaLabel={t('ai_providers.toggle_config')}
+              label={t('common.enabled')}
+              labelPosition="left"
+            />
+          )}
           renderContent={(item) => {
             const stats = getOpenAIProviderStats(item.apiKeyEntries, keyStats, item.prefix);
             const headerEntries = Object.entries(item.headers || {});
             const apiKeyEntries = item.apiKeyEntries || [];
             const statusData = statusBarCache.get(item.name) || calculateStatusBarData([]);
+            const configDisabled = hasDisableAllModelsRule(item.excludedModels);
 
             return (
               <Fragment>
                 <div className="item-title">{item.name}</div>
+                {configDisabled && (
+                  <div className="status-badge warning" style={{ marginTop: 8, marginBottom: 0 }}>
+                    {t('ai_providers.config_disabled_badge')}
+                  </div>
+                )}
                 {item.priority !== undefined && (
                   <div className={styles.fieldRow}>
                     <span className={styles.fieldLabel}>{t('common.priority')}:</span>

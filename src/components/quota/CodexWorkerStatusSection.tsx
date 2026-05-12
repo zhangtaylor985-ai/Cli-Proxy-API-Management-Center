@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IconRefreshCw } from '@/components/ui/icons';
 import { codexWorkersApi } from '@/services/api';
 import type { AuthFileItem, CodexWorkerAuthFile, CodexWorkerItem } from '@/types';
@@ -48,6 +49,12 @@ const getBaseURL = (worker: CodexWorkerItem): string =>
 
 const getContainerStatus = (worker: CodexWorkerItem): string =>
   normalizeText(worker.container_status ?? worker.containerStatus);
+
+const getRouteConfigured = (worker: CodexWorkerItem): boolean =>
+  Boolean(worker.route_configured ?? worker.routeConfigured);
+
+const getRouteEnabled = (worker: CodexWorkerItem): boolean =>
+  Boolean(worker.route_enabled ?? worker.routeEnabled);
 
 const getStatus = (worker: CodexWorkerItem): WorkerStatus => {
   const containerStatus = lower(getContainerStatus(worker));
@@ -157,6 +164,7 @@ export function CodexWorkerStatusSection({ disabled }: CodexWorkerStatusSectionP
   const [proxyDrafts, setProxyDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [savingProxy, setSavingProxy] = useState('');
+  const [savingRoute, setSavingRoute] = useState('');
   const [actingWorker, setActingWorker] = useState('');
   const [authEditor, setAuthEditor] = useState<AuthEditorState>(null);
   const [authSaving, setAuthSaving] = useState(false);
@@ -217,6 +225,19 @@ export function CodexWorkerStatusSection({ disabled }: CodexWorkerStatusSectionP
       setError(err instanceof Error ? err.message : t('common.unknown_error'));
     } finally {
       setActingWorker('');
+    }
+  };
+
+  const toggleRouting = async (worker: CodexWorkerItem, enabled: boolean) => {
+    setSavingRoute(worker.id);
+    setError('');
+    try {
+      await codexWorkersApi.updateRouting(worker.id, enabled);
+      await loadWorkers();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('common.unknown_error'));
+    } finally {
+      setSavingRoute('');
     }
   };
 
@@ -315,8 +336,21 @@ export function CodexWorkerStatusSection({ disabled }: CodexWorkerStatusSectionP
                   <div className={styles.workerMeta}>
                     <span>{getBaseURL(worker)}</span>
                     <span>容器: {getContainerStatus(worker) || '-'}</span>
+                    <span>主程序路由: {getRouteConfigured(worker) ? (getRouteEnabled(worker) ? '启用' : '停用') : '未配置'}</span>
                     <span>Auth: {auth?.email || auth?.account || auth?.name || '-'}</span>
                     {worker.error && <span className={styles.workerInlineError}>{worker.error}</span>}
+                  </div>
+
+                  <div className={styles.workerRouteRow}>
+                    <span>{getRouteEnabled(worker) ? '参与主程序路由' : '不参与主程序路由'}</span>
+                    <ToggleSwitch
+                      checked={getRouteEnabled(worker)}
+                      onChange={(enabled) => void toggleRouting(worker, enabled)}
+                      disabled={disabled || !getRouteConfigured(worker) || savingRoute === worker.id}
+                      ariaLabel="切换 worker 路由"
+                      label={getRouteEnabled(worker) ? '启用' : '停用'}
+                      labelPosition="left"
+                    />
                   </div>
 
                   <div className={styles.workerQuotaList}>

@@ -36,6 +36,14 @@ export interface CodexWorkerItem {
   auth_files?: CodexWorkerAuthFile[];
   authFiles?: CodexWorkerAuthFile[];
   quota?: CodexWorkerQuota | null;
+  route_configured?: boolean;
+  routeConfigured?: boolean;
+  route_enabled?: boolean;
+  routeEnabled?: boolean;
+  route_provider?: string;
+  routeProvider?: string;
+  route_index?: number;
+  routeIndex?: number;
 }
 
 export interface CodexWorkersResponse {

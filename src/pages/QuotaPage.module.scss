@@ -420,6 +420,21 @@
   word-break: break-word;
 }
 
+.workerRouteRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .workerMessage {
   color: var(--text-primary);
   font-size: 12px;
