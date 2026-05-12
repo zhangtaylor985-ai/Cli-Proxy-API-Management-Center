@@ -26,12 +26,20 @@ When the user asks to rebuild the frontend, make the frontend effective, support
 - Local validate command: `npm run check:caddy`
 - Docker build path: `Dockerfile` + `deploy/Caddyfile.docker`
 
+## Repo Boundary
+
+- This repo is the real management frontend for the main CLIProxyAPI service.
+- Do not confuse it with CLIProxyAPI's bundled `/management.html` asset; frontend UI work belongs here.
+- Worker container control panels are intentionally disabled unless the user explicitly changes that policy.
+
 ## Deployment Notes
 
 - The repo uses hash routing, so no SPA history fallback is required in Caddy.
 - A successful `npm run build` only updates `dist/index.html`; it does not by itself guarantee that users are already seeing the new frontend.
 - If repo-local Caddy is already running and serving `./dist`, rebuilding the frontend updates what it serves immediately because the static file on disk changed.
 - If system Caddy or another deployment target is serving a different directory, that target must be reloaded or redeployed explicitly.
+- Production main management UI is served from `/root/cliapp/Cli-Proxy-API-Management-Center/dist/index.html` by the repo-local Caddy process listening on `127.0.0.1:5173`; system Caddy in `/etc/caddy/Caddyfile` routes `admin.claudepool.com` to that local service.
+- Do not validate production management UI through `/root/cliapp/CLIProxyAPI/static/management.html` or `/management.html`; that is the backend bundled legacy asset and should redirect to the React management frontend.
 
 ## Safety
 
