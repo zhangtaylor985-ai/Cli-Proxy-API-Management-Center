@@ -15,6 +15,7 @@ import {
   GEMINI_CLI_CONFIG,
   KIMI_CONFIG
 } from '@/components/quota';
+import { CodexWorkerStatusSection } from '@/components/quota/CodexWorkerStatusSection';
 import type { AuthFileItem } from '@/types';
 import styles from './QuotaPage.module.scss';
 
@@ -70,6 +71,8 @@ export function QuotaPage() {
       </div>
 
       {error && <div className={styles.errorBox}>{error}</div>}
+
+      <CodexWorkerStatusSection files={files} disabled={disableControls} />
 
       <QuotaSection
         config={CLAUDE_CONFIG}
